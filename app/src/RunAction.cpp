@@ -3,7 +3,16 @@
 #include <G4Run.hh>
 #include <G4SystemOfUnits.hh>
 
+#if __has_include(<filesystem>)
 #include <filesystem>
+#define KSA_HAVE_STD_FILESYSTEM 1
+#elif __has_include(<experimental/filesystem>)
+#include <experimental/filesystem>
+#define KSA_HAVE_STD_FILESYSTEM 0
+#else
+#error "No filesystem support available"
+#endif
+
 #include <fstream>
 
 #ifdef KSA_USE_ROOT
@@ -14,16 +23,24 @@
 RunAction::RunAction(const AppConfig& config) : config_(config) {}
 RunAction::~RunAction() = default;
 
+namespace {
+#if KSA_HAVE_STD_FILESYSTEM
+namespace fs = std::filesystem;
+#else
+namespace fs = std::experimental::filesystem;
+#endif
+}
+
 void RunAction::BeginOfRunAction(const G4Run*) {
   totalEdepSubstrate_ = 0.0;
   totalEdepCoating_ = 0.0;
   totalGamma_ = 0;
   totalNeutron_ = 0;
 
-  const auto base = std::filesystem::path(config_.run.outputDir.empty() ? "results" : config_.run.outputDir);
-  std::filesystem::create_directories(base / "logs");
-  std::filesystem::create_directories(base / "root");
-  std::filesystem::create_directories(base / "vis");
+  const auto base = fs::path(config_.run.outputDir.empty() ? "results" : config_.run.outputDir);
+  fs::create_directories(base / "logs");
+  fs::create_directories(base / "root");
+  fs::create_directories(base / "vis");
 
 #ifdef KSA_USE_ROOT
   const auto rootPath = base / "root" / config_.run.outputRootFile;
@@ -33,7 +50,7 @@ void RunAction::BeginOfRunAction(const G4Run*) {
 }
 
 void RunAction::EndOfRunAction(const G4Run* run) {
-  const auto base = std::filesystem::path(config_.run.outputDir.empty() ? "results" : config_.run.outputDir);
+  const auto base = fs::path(config_.run.outputDir.empty() ? "results" : config_.run.outputDir);
 
 #ifdef KSA_USE_ROOT
   if (rootFile_ && runTree_) {

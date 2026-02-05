@@ -3,10 +3,11 @@
 #include <G4PhysListFactory.hh>
 #include <G4SystemOfUnits.hh>
 #include <G4VModularPhysicsList.hh>
+#include <G4VUserPhysicsList.hh>
 
 #include <iostream>
 
-G4VModularPhysicsList* CreatePhysicsList(const PhysicsConfig& config) {
+G4VUserPhysicsList* CreatePhysicsList(const PhysicsConfig& config) {
   G4PhysListFactory factory;
   const std::string requested = config.physicsListName.empty() ? "QGSP_BIC_HPT" : config.physicsListName;
 

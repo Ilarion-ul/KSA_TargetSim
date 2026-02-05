@@ -15,6 +15,18 @@ target_link_libraries(ksasim PRIVATE ${Geant4_LIBRARIES})
 find_package(nlohmann_json QUIET)
 if(nlohmann_json_FOUND)
   target_link_libraries(ksasim PRIVATE nlohmann_json::nlohmann_json)
+else()
+  include(FetchContent)
+  FetchContent_Declare(
+    nlohmann_json
+    URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+  )
+  FetchContent_MakeAvailable(nlohmann_json)
+  target_link_libraries(ksasim PRIVATE nlohmann_json::nlohmann_json)
+endif()
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+  target_link_libraries(ksasim PRIVATE stdc++fs)
 endif()
 
 if(KSA_ROOT_ENABLED)
