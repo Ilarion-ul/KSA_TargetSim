@@ -58,6 +58,22 @@ AppConfig LoadConfig(const std::string& path) {
   get_if_exists(jt, "radius_mm", cfg.target.radius_mm);
   get_if_exists(jt, "temperature_K", cfg.target.temperature_K);
 
+  get_if_exists(jt, "plate_xy_mm", cfg.target.plate_xy_mm);
+  get_if_exists(jt, "plate_thicknesses_mm", cfg.target.plate_thicknesses_mm);
+  get_if_exists(jt, "water_gap_mm", cfg.target.water_gap_mm);
+  get_if_exists(jt, "clad_ta_mm", cfg.target.clad_ta_mm);
+  get_if_exists(jt, "buffer_ti_mm", cfg.target.buffer_ti_mm);
+  get_if_exists(jt, "assembly_thickness_mm", cfg.target.assembly_thickness_mm);
+
+  if (cfg.target.type == "W-Ta") {
+    if (cfg.target.plate_thicknesses_mm.size() != 7) {
+      throw std::runtime_error("Config validation failed: target.plate_thicknesses_mm must contain 7 values for W-Ta");
+    }
+    if (cfg.target.buffer_ti_mm < 0.03 || cfg.target.buffer_ti_mm > 0.06) {
+      throw std::runtime_error("Config validation failed: target.buffer_ti_mm must be in [0.03, 0.06] mm");
+    }
+  }
+
   const auto& jr = j.at("run");
   get_if_exists(jr, "nEvents", cfg.run.nEvents);
   get_if_exists(jr, "nThreads", cfg.run.nThreads);

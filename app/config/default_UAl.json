@@ -33,7 +33,7 @@
     "cut_mm": 0.1
   },
   "geometry": {
-    "simpleCylinder": true,
+    "simpleCylinder": false,
     "worldMargin_mm": 50.0
   }
 }

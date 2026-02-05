@@ -1,12 +1,12 @@
 {
-  "_comment": "Default W-Ta production-like setup",
+  "_comment": "Default realistic W-Ta sectional target setup",
   "beam": {
     "_comment": "Beam units: MeV/mm/mrad",
     "energy_MeV": 100.0,
     "sigmaX_mm": 1.0,
     "sigmaY_mm": 1.0,
     "divergence_mrad": 1.0,
-    "position_mm": [0.0, 0.0, -5.0],
+    "position_mm": [0.0, 0.0, -70.0],
     "direction": [0.0, 0.0, 1.0],
     "defect_mode": "ideal",
     "offset_mm": [0.0, 0.0, 0.0],
@@ -15,10 +15,14 @@
     "halo_sigma_mm": 3.0
   },
   "target": {
+    "_comment": "Sectional W target: 7 W plates with Ti/Ta wrapping and 8 water gaps",
     "type": "W-Ta",
-    "substrate_thickness_mm": 10.0,
-    "coating_thickness_mm": 0.5,
-    "radius_mm": 10.0,
+    "plate_xy_mm": 65.8,
+    "plate_thicknesses_mm": [2.5, 2.5, 2.5, 3.5, 3.5, 5.5, 9.5],
+    "water_gap_mm": 2.0,
+    "clad_ta_mm": 0.25,
+    "buffer_ti_mm": 0.04,
+    "assembly_thickness_mm": 120.0,
     "temperature_K": 300.0
   },
   "run": {

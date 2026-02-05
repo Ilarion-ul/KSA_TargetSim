@@ -3,6 +3,7 @@
 #include <array>
 #include <optional>
 #include <string>
+#include <vector>
 
 // NOTE: Units are stored in human-friendly values (MeV/mm/mrad).
 // Conversion to Geant4 units is done at use-sites in simulation code.
@@ -24,9 +25,20 @@ struct BeamConfig {
 
 struct TargetConfig {
   std::string type{"W-Ta"};
+
+  // Legacy/simple geometry fields.
   double substrate_thickness_mm{10.0};
   double coating_thickness_mm{0.5};
   double radius_mm{10.0};
+
+  // Realistic sectional W-Ta geometry fields.
+  double plate_xy_mm{65.8};
+  std::vector<double> plate_thicknesses_mm{2.5, 2.5, 2.5, 3.5, 3.5, 5.5, 9.5};
+  double water_gap_mm{2.0};
+  double clad_ta_mm{0.25};
+  double buffer_ti_mm{0.04};
+  double assembly_thickness_mm{120.0};
+
   double temperature_K{300.0};
 };
 

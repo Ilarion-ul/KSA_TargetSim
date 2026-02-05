@@ -6,6 +6,13 @@
 #include <G4Step.hh>
 #include <G4Track.hh>
 
+namespace {
+bool StartsWith(const G4String& name, const char* prefix) {
+  const G4String p(prefix);
+  return name.size() >= p.size() && name.substr(0, p.size()) == p;
+}
+}
+
 SteppingAction::SteppingAction(EventAction* eventAction) : eventAction_(eventAction) {}
 
 void SteppingAction::UserSteppingAction(const G4Step* step) {
@@ -19,8 +26,8 @@ void SteppingAction::UserSteppingAction(const G4Step* step) {
   const auto name = volume->GetName();
   const double edep = step->GetTotalEnergyDeposit();
 
-  const bool inSub = (name == "TargetSubstrate");
-  const bool inCoat = (name == "TargetCoating");
+  const bool inSub = StartsWith(name, "TargetSubstrate");
+  const bool inCoat = StartsWith(name, "TargetCoating");
   if (!(inSub || inCoat)) {
     return;
   }
