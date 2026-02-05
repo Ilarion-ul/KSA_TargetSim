@@ -9,6 +9,7 @@ KSA_TargetSim — мінімальний Geant4-симулятор для мод
 Підтримуються два пресети матеріалів:
 - `W-Ta`
 - `U-Al`
+- `U-Mo`
 
 Геометрія: **двошаровий циліндр** (substrate + coating), співвісний із віссю `z`.
 
@@ -64,6 +65,7 @@ build/bin/ksasim --vis -c app/config/quick_vis.json
 Приклади полів див. у:
 - `app/config/default_WTa.json`
 - `app/config/default_UAl.json`
+- `app/config/default_UMo.json`
 - `app/config/quick_vis.json`
 
 ## Вихідні дані

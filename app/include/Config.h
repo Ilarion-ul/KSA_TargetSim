@@ -39,6 +39,18 @@ struct TargetConfig {
   double buffer_ti_mm{0.04};
   double assembly_thickness_mm{120.0};
 
+  // U-Mo target and construction materials.
+  double clad_thickness_front_mm{0.95}; // plates 1..4
+  double clad_thickness_rest_mm{0.70};  // plates 5..12
+  double gap_inout_mm{1.0};
+  double gap_mid_mm{1.75};
+  double housing_inner_xy_mm{66.0};
+  double housing_wall_mm{2.0};
+  double entrance_window_mm{2.0};
+  double helium_chamber_len_mm{237.0};
+  double u7mo_density_g_cm3{17.0}; // TODO: validate exact tech-specific density.
+  std::string fill_medium_in_target{"water"};
+
   double temperature_K{300.0};
 };
 
@@ -60,6 +72,11 @@ struct PhysicsConfig {
 struct GeometryConfig {
   bool simpleCylinder{true};
   double worldMargin_mm{50.0};
+
+  // Assembly/beamline split (used by U-Mo geometry branch).
+  double total_assembly_len_mm{2620.0};
+  double beamline_vacuum_len_mm{2210.0};
+  double target_region_extra_clearance_mm{0.0};
 };
 
 struct DefectConfig {

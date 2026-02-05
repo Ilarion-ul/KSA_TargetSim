@@ -28,13 +28,15 @@ void SteppingAction::UserSteppingAction(const G4Step* step) {
 
   const bool inSub = StartsWith(name, "TargetSubstrate");
   const bool inCoat = StartsWith(name, "TargetCoating");
-  if (!(inSub || inCoat)) {
+  const bool inUMo = StartsWith(name, "PlateU_");
+  const bool inAlClad = StartsWith(name, "PlateCladAl_");
+  if (!(inSub || inCoat || inUMo || inAlClad)) {
     return;
   }
 
-  if (inSub) {
+  if (inSub || inUMo) {
     eventAction_->AddEdepSubstrate(edep);
-  } else if (inCoat) {
+  } else if (inCoat || inAlClad) {
     eventAction_->AddEdepCoating(edep);
   }
 

@@ -50,9 +50,10 @@ AppConfig LoadConfig(const std::string& path) {
 
   const auto& jt = j.at("target");
   get_if_exists(jt, "type", cfg.target.type);
-  if (cfg.target.type != "W-Ta" && cfg.target.type != "U-Al") {
-    throw std::runtime_error("Config validation failed: target.type must be 'W-Ta' or 'U-Al'");
+  if (cfg.target.type != "W-Ta" && cfg.target.type != "U-Al" && cfg.target.type != "U-Mo") {
+    throw std::runtime_error("Config validation failed: target.type must be 'W-Ta', 'U-Al', or 'U-Mo'");
   }
+
   get_if_exists(jt, "substrate_thickness_mm", cfg.target.substrate_thickness_mm);
   get_if_exists(jt, "coating_thickness_mm", cfg.target.coating_thickness_mm);
   get_if_exists(jt, "radius_mm", cfg.target.radius_mm);
@@ -65,12 +66,32 @@ AppConfig LoadConfig(const std::string& path) {
   get_if_exists(jt, "buffer_ti_mm", cfg.target.buffer_ti_mm);
   get_if_exists(jt, "assembly_thickness_mm", cfg.target.assembly_thickness_mm);
 
+  get_if_exists(jt, "clad_thickness_front_mm", cfg.target.clad_thickness_front_mm);
+  get_if_exists(jt, "clad_thickness_rest_mm", cfg.target.clad_thickness_rest_mm);
+  get_if_exists(jt, "gap_inout_mm", cfg.target.gap_inout_mm);
+  get_if_exists(jt, "gap_mid_mm", cfg.target.gap_mid_mm);
+  get_if_exists(jt, "housing_inner_xy_mm", cfg.target.housing_inner_xy_mm);
+  get_if_exists(jt, "housing_wall_mm", cfg.target.housing_wall_mm);
+  get_if_exists(jt, "entrance_window_mm", cfg.target.entrance_window_mm);
+  get_if_exists(jt, "helium_chamber_len_mm", cfg.target.helium_chamber_len_mm);
+  get_if_exists(jt, "u7mo_density_g_cm3", cfg.target.u7mo_density_g_cm3);
+  get_if_exists(jt, "fill_medium_in_target", cfg.target.fill_medium_in_target);
+
   if (cfg.target.type == "W-Ta") {
     if (cfg.target.plate_thicknesses_mm.size() != 7) {
       throw std::runtime_error("Config validation failed: target.plate_thicknesses_mm must contain 7 values for W-Ta");
     }
     if (cfg.target.buffer_ti_mm < 0.03 || cfg.target.buffer_ti_mm > 0.06) {
       throw std::runtime_error("Config validation failed: target.buffer_ti_mm must be in [0.03, 0.06] mm");
+    }
+  }
+
+  if (cfg.target.type == "U-Mo") {
+    if (cfg.target.plate_thicknesses_mm.size() != 12) {
+      throw std::runtime_error("Config validation failed: target.plate_thicknesses_mm must contain 12 values for U-Mo");
+    }
+    if (cfg.target.fill_medium_in_target != "water" && cfg.target.fill_medium_in_target != "vacuum") {
+      throw std::runtime_error("Config validation failed: target.fill_medium_in_target must be 'water' or 'vacuum'");
     }
   }
 
@@ -101,6 +122,9 @@ AppConfig LoadConfig(const std::string& path) {
     const auto& jg = j.at("geometry");
     get_if_exists(jg, "simpleCylinder", cfg.geometry.simpleCylinder);
     get_if_exists(jg, "worldMargin_mm", cfg.geometry.worldMargin_mm);
+    get_if_exists(jg, "total_assembly_len_mm", cfg.geometry.total_assembly_len_mm);
+    get_if_exists(jg, "beamline_vacuum_len_mm", cfg.geometry.beamline_vacuum_len_mm);
+    get_if_exists(jg, "target_region_extra_clearance_mm", cfg.geometry.target_region_extra_clearance_mm);
   }
 
   // Future extension point: dedicated defects section with richer parametrization.
