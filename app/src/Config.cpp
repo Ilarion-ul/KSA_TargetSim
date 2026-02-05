@@ -1,0 +1,100 @@
+#include "Config.h"
+
+#include <fstream>
+#include <stdexcept>
+
+#include <nlohmann/json.hpp>
+
+namespace {
+using json = nlohmann::json;
+
+template <typename T>
+void get_if_exists(const json& j, const char* key, T& out) {
+  if (j.contains(key)) {
+    out = j.at(key).get<T>();
+  }
+}
+
+void validate_required_sections(const json& j) {
+  if (!j.contains("beam") || !j.contains("target") || !j.contains("run")) {
+    throw std::runtime_error("Config validation failed: required sections beam/target/run are missing");
+  }
+}
+} // namespace
+
+AppConfig LoadConfig(const std::string& path) {
+  std::ifstream in(path);
+  if (!in) {
+    throw std::runtime_error("Failed to open config file: " + path);
+  }
+
+  json j;
+  in >> j;
+
+  validate_required_sections(j);
+
+  AppConfig cfg;
+
+  const auto& jb = j.at("beam");
+  get_if_exists(jb, "energy_MeV", cfg.beam.energy_MeV);
+  get_if_exists(jb, "sigmaX_mm", cfg.beam.sigmaX_mm);
+  get_if_exists(jb, "sigmaY_mm", cfg.beam.sigmaY_mm);
+  get_if_exists(jb, "divergence_mrad", cfg.beam.divergence_mrad);
+  get_if_exists(jb, "position_mm", cfg.beam.position_mm);
+  get_if_exists(jb, "direction", cfg.beam.direction);
+  get_if_exists(jb, "defect_mode", cfg.beam.defect_mode);
+  get_if_exists(jb, "offset_mm", cfg.beam.offset_mm);
+  get_if_exists(jb, "tilt_mrad", cfg.beam.tilt_mrad);
+  get_if_exists(jb, "halo_fraction", cfg.beam.halo_fraction);
+  get_if_exists(jb, "halo_sigma_mm", cfg.beam.halo_sigma_mm);
+
+  const auto& jt = j.at("target");
+  get_if_exists(jt, "type", cfg.target.type);
+  if (cfg.target.type != "W-Ta" && cfg.target.type != "U-Al") {
+    throw std::runtime_error("Config validation failed: target.type must be 'W-Ta' or 'U-Al'");
+  }
+  get_if_exists(jt, "substrate_thickness_mm", cfg.target.substrate_thickness_mm);
+  get_if_exists(jt, "coating_thickness_mm", cfg.target.coating_thickness_mm);
+  get_if_exists(jt, "radius_mm", cfg.target.radius_mm);
+  get_if_exists(jt, "temperature_K", cfg.target.temperature_K);
+
+  const auto& jr = j.at("run");
+  get_if_exists(jr, "nEvents", cfg.run.nEvents);
+  get_if_exists(jr, "nThreads", cfg.run.nThreads);
+  get_if_exists(jr, "outputRootFile", cfg.run.outputRootFile);
+  get_if_exists(jr, "outputDir", cfg.run.outputDir);
+  get_if_exists(jr, "enableVis", cfg.run.enableVis);
+  get_if_exists(jr, "enableEventTree", cfg.run.enableEventTree);
+  if (cfg.run.nThreads < 0) {
+    cfg.run.nThreads = 0; // nThreads=0 means auto.
+  }
+  if (cfg.run.outputDir.empty()) {
+    cfg.run.outputDir = "results";
+  }
+
+  if (j.contains("physics")) {
+    const auto& jp = j.at("physics");
+    get_if_exists(jp, "physicsListName", cfg.physics.physicsListName);
+    get_if_exists(jp, "enablePhotonuclear", cfg.physics.enablePhotonuclear);
+    if (jp.contains("cut_mm") && !jp.at("cut_mm").is_null()) {
+      cfg.physics.cut_mm = jp.at("cut_mm").get<double>();
+    }
+  }
+
+  if (j.contains("geometry")) {
+    const auto& jg = j.at("geometry");
+    get_if_exists(jg, "simpleCylinder", cfg.geometry.simpleCylinder);
+    get_if_exists(jg, "worldMargin_mm", cfg.geometry.worldMargin_mm);
+  }
+
+  // Future extension point: dedicated defects section with richer parametrization.
+  if (j.contains("defects")) {
+    const auto& jd = j.at("defects");
+    get_if_exists(jd, "mode", cfg.defects.mode);
+  } else {
+    cfg.defects.mode = cfg.beam.defect_mode;
+  }
+
+  // Unknown and _comment fields are ignored naturally by selective extraction.
+  return cfg;
+}

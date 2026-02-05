@@ -1,0 +1,13 @@
+# OpenGL X11 visualization macro.
+# Note: over SSH / llvmpipe rendering can be slow; consider disabling trajectories
+# by removing /vis/scene/add/trajectories for faster interaction.
+
+/vis/open OGL
+/vis/drawVolume
+/vis/viewer/set/autoRefresh true
+/vis/scene/add/axes 0 0 0 50 cm
+/vis/scene/add/trajectories smooth
+/vis/modeling/trajectories/create/drawByCharge
+
+/run/initialize
+/run/beamOn 5
