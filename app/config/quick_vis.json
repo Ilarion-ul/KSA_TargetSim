@@ -1,0 +1,39 @@
+{
+  "_comment": "Fast visualization profile",
+  "beam": {
+    "energy_MeV": 20.0,
+    "sigmaX_mm": 1.0,
+    "sigmaY_mm": 1.0,
+    "divergence_mrad": 1.0,
+    "position_mm": [0.0, 0.0, -5.0],
+    "direction": [0.0, 0.0, 1.0],
+    "defect_mode": "ideal",
+    "offset_mm": [0.0, 0.0, 0.0],
+    "tilt_mrad": [0.0, 0.0],
+    "halo_fraction": 0.0,
+    "halo_sigma_mm": 3.0
+  },
+  "target": {
+    "type": "W-Ta",
+    "substrate_thickness_mm": 10.0,
+    "coating_thickness_mm": 0.5,
+    "radius_mm": 10.0,
+    "temperature_K": 300.0
+  },
+  "run": {
+    "nEvents": 10,
+    "nThreads": 0,
+    "outputRootFile": "quick_vis.root",
+    "outputDir": "results",
+    "enableVis": true
+  },
+  "physics": {
+    "physicsListName": "QGSP_BIC_HPT",
+    "enablePhotonuclear": true,
+    "cut_mm": 0.5
+  },
+  "geometry": {
+    "simpleCylinder": true,
+    "worldMargin_mm": 120.0
+  }
+}
