@@ -15,13 +15,23 @@
 #endif
 
 #include <fstream>
+#include <vector>
 
 #ifdef KSA_USE_ROOT
 #include <TFile.h>
 #include <TTree.h>
 #endif
 
-RunAction::RunAction(const AppConfig& config) : config_(config) {}
+namespace {
+size_t DeterminePlateCount(const AppConfig& config) {
+  if (config.target.type == "U-Mo" || (config.target.type == "W-Ta" && config.geometry.simpleCylinder)) {
+    return config.target.plate_thicknesses_mm.size();
+  }
+  return 1;
+}
+} // namespace
+
+RunAction::RunAction(const AppConfig& config) : config_(config), plateCount_(DeterminePlateCount(config)) {}
 RunAction::~RunAction() = default;
 
 namespace {
@@ -39,6 +49,9 @@ double gTotalEdepSubstrate = 0.0;
 double gTotalEdepCoating = 0.0;
 long long gTotalGamma = 0;
 long long gTotalNeutron = 0;
+long long gTotalNeutronExit = 0;
+std::vector<double> gTotalPlateEdep;
+std::vector<double> gTotalPlateNeutronTrackLen;
 }
 
 void RunAction::BeginOfRunAction(const G4Run*) {
@@ -49,6 +62,9 @@ void RunAction::BeginOfRunAction(const G4Run*) {
     gTotalEdepCoating = 0.0;
     gTotalGamma = 0;
     gTotalNeutron = 0;
+    gTotalNeutronExit = 0;
+    gTotalPlateEdep.assign(plateCount_, 0.0);
+    gTotalPlateNeutronTrackLen.assign(plateCount_, 0.0);
   }
 
   const auto base = fs::path(config_.run.outputDir.empty() ? "results" : config_.run.outputDir);
@@ -79,12 +95,29 @@ void RunAction::EndOfRunAction(const G4Run* run) {
   double edepCoat = 0.0;
   long long nGammaTotal = 0;
   long long nNeutronTotal = 0;
+  long long nNeutronExitTotal = 0;
+  std::vector<double> plateEdep;
+  std::vector<double> plateNeutronTrackLen;
   {
     std::lock_guard<std::mutex> lock(gRunSummaryMutex);
     edepSub = gTotalEdepSubstrate;
     edepCoat = gTotalEdepCoating;
     nGammaTotal = gTotalGamma;
     nNeutronTotal = gTotalNeutron;
+    nNeutronExitTotal = gTotalNeutronExit;
+    plateEdep = gTotalPlateEdep;
+    plateNeutronTrackLen = gTotalPlateNeutronTrackLen;
+  }
+
+  std::vector<double> plateEdepMeV;
+  plateEdepMeV.reserve(plateEdep.size());
+  for (double value : plateEdep) {
+    plateEdepMeV.push_back(value / MeV);
+  }
+  std::vector<double> plateNeutronTrackLenMM;
+  plateNeutronTrackLenMM.reserve(plateNeutronTrackLen.size());
+  for (double value : plateNeutronTrackLen) {
+    plateNeutronTrackLenMM.push_back(value / mm);
   }
 
 #ifdef KSA_USE_ROOT
@@ -95,6 +128,9 @@ void RunAction::EndOfRunAction(const G4Run* run) {
     long long nNeutron = nNeutronTotal;
     int nEvents = run ? run->GetNumberOfEvent() : config_.run.nEvents;
     std::string physicsListName = config_.physics.physicsListName;
+    int nNeutronExit = static_cast<int>(nNeutronExitTotal);
+    std::vector<double> plate_edep_MeV = plateEdepMeV;
+    std::vector<double> plate_neutron_track_len_mm = plateNeutronTrackLenMM;
     double beam_E0_MeV = config_.beam.energy_MeV;
     double beam_Esigma_rel = config_.beam.energy_sigma_rel_1sigma;
     std::string beam_spread_model = config_.beam.energy_spread_model;
@@ -111,8 +147,11 @@ void RunAction::EndOfRunAction(const G4Run* run) {
     runTree_->Branch("edep_coating", &edep_coating_MeV);
     runTree_->Branch("nGamma", &nGamma);
     runTree_->Branch("nNeutron", &nNeutron);
+    runTree_->Branch("nNeutronExit", &nNeutronExit);
     runTree_->Branch("nEvents", &nEvents);
     runTree_->Branch("physicsListName", &physicsListName);
+    runTree_->Branch("plate_edep_MeV", &plate_edep_MeV);
+    runTree_->Branch("plate_neutron_track_len_mm", &plate_neutron_track_len_mm);
     runTree_->Branch("beam_E0_MeV", &beam_E0_MeV);
     runTree_->Branch("beam_Esigma_rel", &beam_Esigma_rel);
     runTree_->Branch("beam_spread_model", &beam_spread_model);
@@ -141,8 +180,24 @@ void RunAction::EndOfRunAction(const G4Run* run) {
   os << "  \"edep_coating\": " << (edepCoat / MeV) << ",\n";
   os << "  \"nGamma\": " << nGammaTotal << ",\n";
   os << "  \"nNeutron\": " << nNeutronTotal << ",\n";
+  os << "  \"nNeutronExit\": " << nNeutronExitTotal << ",\n";
   os << "  \"nEvents\": " << (run ? run->GetNumberOfEvent() : config_.run.nEvents) << ",\n";
   os << "  \"physicsListName\": \"" << config_.physics.physicsListName << "\",\n";
+  os << "  \"plate_summary\": {\n";
+  os << "    \"count\": " << plateEdepMeV.size() << ",\n";
+  os << "    \"edep_MeV\": [";
+  for (size_t i = 0; i < plateEdepMeV.size(); ++i) {
+    os << plateEdepMeV[i];
+    if (i + 1 < plateEdepMeV.size()) os << ", ";
+  }
+  os << "],\n";
+  os << "    \"neutron_track_len_mm\": [";
+  for (size_t i = 0; i < plateNeutronTrackLenMM.size(); ++i) {
+    os << plateNeutronTrackLenMM[i];
+    if (i + 1 < plateNeutronTrackLenMM.size()) os << ", ";
+  }
+  os << "]\n";
+  os << "  },\n";
   os << "  \"beam\": {\n";
   os << "    \"E0_MeV\": " << config_.beam.energy_MeV << ",\n";
   os << "    \"energy_spread_model\": \"" << config_.beam.energy_spread_model << "\",\n";
@@ -158,11 +213,30 @@ void RunAction::EndOfRunAction(const G4Run* run) {
   os << "}\n";
 }
 
-void RunAction::AccumulateEvent(double edepSubstrate, double edepCoating, int nGamma, int nNeutron) {
+void RunAction::AccumulateEvent(double edepSubstrate,
+                                double edepCoating,
+                                int nGamma,
+                                int nNeutron,
+                                int nNeutronExit,
+                                const std::vector<double>& plateEdep,
+                                const std::vector<double>& plateNeutronTrackLen) {
   std::lock_guard<std::mutex> lock(gRunSummaryMutex);
   gTotalEdepSubstrate += edepSubstrate;
   gTotalEdepCoating += edepCoating;
   gTotalGamma += nGamma;
   gTotalNeutron += nNeutron;
+  gTotalNeutronExit += nNeutronExit;
+  if (gTotalPlateEdep.size() < plateEdep.size()) {
+    gTotalPlateEdep.resize(plateEdep.size(), 0.0);
+  }
+  if (gTotalPlateNeutronTrackLen.size() < plateNeutronTrackLen.size()) {
+    gTotalPlateNeutronTrackLen.resize(plateNeutronTrackLen.size(), 0.0);
+  }
+  for (size_t i = 0; i < plateEdep.size(); ++i) {
+    gTotalPlateEdep[i] += plateEdep[i];
+  }
+  for (size_t i = 0; i < plateNeutronTrackLen.size(); ++i) {
+    gTotalPlateNeutronTrackLen[i] += plateNeutronTrackLen[i];
+  }
   // TODO: migrate to G4Accumulable/G4AnalysisManager for richer MT-safe reporting.
 }

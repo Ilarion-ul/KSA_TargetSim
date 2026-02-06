@@ -11,6 +11,26 @@ bool StartsWith(const G4String& name, const char* prefix) {
   const G4String p(prefix);
   return name.size() >= p.size() && name.substr(0, p.size()) == p;
 }
+
+bool IsPlateVolume(const G4String& name) {
+  return StartsWith(name, "TargetSubstrate") || StartsWith(name, "TargetCoating") || StartsWith(name, "TargetBufferTi") ||
+         StartsWith(name, "PlateU_") || StartsWith(name, "PlateCladAl_");
+}
+
+bool IsSubstrateVolume(const G4String& name) {
+  return StartsWith(name, "TargetSubstrate") || StartsWith(name, "PlateU_");
+}
+
+bool IsCoatingVolume(const G4String& name) {
+  return StartsWith(name, "TargetCoating") || StartsWith(name, "TargetBufferTi") || StartsWith(name, "PlateCladAl_");
+}
+
+int PlateIndexFromCopyNo(int copyNo) {
+  if (copyNo > 0) {
+    return copyNo - 1;
+  }
+  return 0;
+}
 }
 
 SteppingAction::SteppingAction(EventAction* eventAction) : eventAction_(eventAction) {}
@@ -26,19 +46,17 @@ void SteppingAction::UserSteppingAction(const G4Step* step) {
   const auto name = volume->GetName();
   const double edep = step->GetTotalEnergyDeposit();
 
-  const bool inSub = StartsWith(name, "TargetSubstrate");
-  const bool inCoat = StartsWith(name, "TargetCoating");
-  const bool inUMo = StartsWith(name, "PlateU_");
-  const bool inAlClad = StartsWith(name, "PlateCladAl_");
-  if (!(inSub || inCoat || inUMo || inAlClad)) {
+  if (!IsPlateVolume(name)) {
     return;
   }
 
-  if (inSub || inUMo) {
+  if (IsSubstrateVolume(name)) {
     eventAction_->AddEdepSubstrate(edep);
-  } else if (inCoat || inAlClad) {
+  } else if (IsCoatingVolume(name)) {
     eventAction_->AddEdepCoating(edep);
   }
+  const int plateIndex = PlateIndexFromCopyNo(step->GetPreStepPoint()->GetTouchableHandle()->GetCopyNumber());
+  eventAction_->AddPlateEdep(plateIndex, edep);
 
   // Minimal particle counting metric:
   // count unique gamma/neutron track IDs that appear in target volume.
@@ -46,9 +64,20 @@ void SteppingAction::UserSteppingAction(const G4Step* step) {
   if (!track || !track->GetDefinition()) return;
 
   const auto* p = track->GetDefinition();
-  if (p->GetParticleName() == "gamma") {
+  const auto particleName = p->GetParticleName();
+  if (particleName == "gamma") {
     eventAction_->CountGamma(track->GetTrackID());
-  } else if (p->GetParticleName() == "neutron") {
+  } else if (particleName == "neutron") {
     eventAction_->CountNeutron(track->GetTrackID());
+    eventAction_->AddPlateNeutronTrackLen(plateIndex, step->GetStepLength());
+    if (step->GetPostStepPoint()) {
+      const auto* postVolume = step->GetPostStepPoint()->GetTouchableHandle()
+                                   ? step->GetPostStepPoint()->GetTouchableHandle()->GetVolume()
+                                   : nullptr;
+      const auto postName = postVolume ? postVolume->GetName() : G4String();
+      if (!postVolume || !IsPlateVolume(postName)) {
+        eventAction_->CountNeutronExit(track->GetTrackID());
+      }
+    }
   }
 }
