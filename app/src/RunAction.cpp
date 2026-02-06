@@ -95,6 +95,17 @@ void RunAction::EndOfRunAction(const G4Run* run) {
     long long nNeutron = nNeutronTotal;
     int nEvents = run ? run->GetNumberOfEvent() : config_.run.nEvents;
     std::string physicsListName = config_.physics.physicsListName;
+    double beam_E0_MeV = config_.beam.energy_MeV;
+    double beam_Esigma_rel = config_.beam.energy_sigma_rel_1sigma;
+    std::string beam_spread_model = config_.beam.energy_spread_model;
+    std::string beam_mode = config_.beam.mode;
+    double beam_pulse_width_us = config_.beam.pulse_width_us;
+    double beam_rep_rate_Hz = config_.beam.rep_rate_Hz;
+    double beam_I_pulse_A = config_.beam.I_pulse_A;
+    double beam_I_avg_A_input = config_.beam.I_avg_A;
+    double beam_duty = (config_.beam.pulse_width_us * 1e-6) * config_.beam.rep_rate_Hz;
+    double beam_I_avg_A_calc = beam_I_pulse_A * beam_duty;
+    double beam_power_kW = config_.beam.beam_power_kW;
 
     runTree_->Branch("edep_substrate", &edep_substrate_MeV);
     runTree_->Branch("edep_coating", &edep_coating_MeV);
@@ -102,6 +113,17 @@ void RunAction::EndOfRunAction(const G4Run* run) {
     runTree_->Branch("nNeutron", &nNeutron);
     runTree_->Branch("nEvents", &nEvents);
     runTree_->Branch("physicsListName", &physicsListName);
+    runTree_->Branch("beam_E0_MeV", &beam_E0_MeV);
+    runTree_->Branch("beam_Esigma_rel", &beam_Esigma_rel);
+    runTree_->Branch("beam_spread_model", &beam_spread_model);
+    runTree_->Branch("beam_mode", &beam_mode);
+    runTree_->Branch("beam_pulse_width_us", &beam_pulse_width_us);
+    runTree_->Branch("beam_rep_rate_Hz", &beam_rep_rate_Hz);
+    runTree_->Branch("beam_I_pulse_A", &beam_I_pulse_A);
+    runTree_->Branch("beam_I_avg_A_input", &beam_I_avg_A_input);
+    runTree_->Branch("beam_duty", &beam_duty);
+    runTree_->Branch("beam_I_avg_A_calc", &beam_I_avg_A_calc);
+    runTree_->Branch("beam_power_kW", &beam_power_kW);
     runTree_->Fill();
 
     rootFile_->cd();
@@ -120,7 +142,19 @@ void RunAction::EndOfRunAction(const G4Run* run) {
   os << "  \"nGamma\": " << nGammaTotal << ",\n";
   os << "  \"nNeutron\": " << nNeutronTotal << ",\n";
   os << "  \"nEvents\": " << (run ? run->GetNumberOfEvent() : config_.run.nEvents) << ",\n";
-  os << "  \"physicsListName\": \"" << config_.physics.physicsListName << "\"\n";
+  os << "  \"physicsListName\": \"" << config_.physics.physicsListName << "\",\n";
+  os << "  \"beam\": {\n";
+  os << "    \"E0_MeV\": " << config_.beam.energy_MeV << ",\n";
+  os << "    \"energy_spread_model\": \"" << config_.beam.energy_spread_model << "\",\n";
+  os << "    \"energy_sigma_rel_1sigma\": " << config_.beam.energy_sigma_rel_1sigma << ",\n";
+  os << "    \"mode\": \"" << config_.beam.mode << "\",\n";
+  os << "    \"pulse_width_us\": " << config_.beam.pulse_width_us << ",\n";
+  os << "    \"rep_rate_Hz\": " << config_.beam.rep_rate_Hz << ",\n";
+  os << "    \"I_pulse_A\": " << config_.beam.I_pulse_A << ",\n";
+  os << "    \"I_avg_A_input\": " << config_.beam.I_avg_A << ",\n";
+  os << "    \"I_avg_A_calc\": " << (config_.beam.I_pulse_A * (config_.beam.pulse_width_us * 1e-6) * config_.beam.rep_rate_Hz) << ",\n";
+  os << "    \"beam_power_kW\": " << config_.beam.beam_power_kW << "\n";
+  os << "  }\n";
   os << "}\n";
 #endif
 }

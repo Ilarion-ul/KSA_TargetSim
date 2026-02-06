@@ -30,23 +30,62 @@ AppConfig LoadConfig(const std::string& path) {
 
   json j;
   in >> j;
-
   validate_required_sections(j);
 
   AppConfig cfg;
 
   const auto& jb = j.at("beam");
   get_if_exists(jb, "energy_MeV", cfg.beam.energy_MeV);
+  get_if_exists(jb, "energy_sigma_rel_1sigma", cfg.beam.energy_sigma_rel_1sigma);
+  get_if_exists(jb, "energy_uniform_rel_halfspan", cfg.beam.energy_uniform_rel_halfspan);
+  get_if_exists(jb, "energy_spread_model", cfg.beam.energy_spread_model);
+
+  get_if_exists(jb, "position_mm", cfg.beam.position_mm);
+  get_if_exists(jb, "pos_mm", cfg.beam.position_mm);
+  get_if_exists(jb, "direction", cfg.beam.direction);
+  get_if_exists(jb, "dir", cfg.beam.direction);
+
   get_if_exists(jb, "sigmaX_mm", cfg.beam.sigmaX_mm);
   get_if_exists(jb, "sigmaY_mm", cfg.beam.sigmaY_mm);
+  get_if_exists(jb, "sigma_x_mm", cfg.beam.sigmaX_mm);
+  get_if_exists(jb, "sigma_y_mm", cfg.beam.sigmaY_mm);
+
+  get_if_exists(jb, "sigma_theta_x_mrad", cfg.beam.sigma_theta_x_mrad);
+  get_if_exists(jb, "sigma_theta_y_mrad", cfg.beam.sigma_theta_y_mrad);
   get_if_exists(jb, "divergence_mrad", cfg.beam.divergence_mrad);
-  get_if_exists(jb, "position_mm", cfg.beam.position_mm);
-  get_if_exists(jb, "direction", cfg.beam.direction);
+
+  get_if_exists(jb, "norm_emit_m_rad", cfg.beam.norm_emit_m_rad);
+  get_if_exists(jb, "use_emit_model", cfg.beam.use_emit_model);
+  get_if_exists(jb, "emit_sigma_theta_from", cfg.beam.emit_sigma_theta_from);
+
+  get_if_exists(jb, "mode", cfg.beam.mode);
+  get_if_exists(jb, "pulse_width_us", cfg.beam.pulse_width_us);
+  get_if_exists(jb, "rep_rate_Hz", cfg.beam.rep_rate_Hz);
+  get_if_exists(jb, "I_pulse_A", cfg.beam.I_pulse_A);
+  get_if_exists(jb, "I_avg_A", cfg.beam.I_avg_A);
+  get_if_exists(jb, "beam_power_kW", cfg.beam.beam_power_kW);
+
   get_if_exists(jb, "defect_mode", cfg.beam.defect_mode);
   get_if_exists(jb, "offset_mm", cfg.beam.offset_mm);
   get_if_exists(jb, "tilt_mrad", cfg.beam.tilt_mrad);
   get_if_exists(jb, "halo_fraction", cfg.beam.halo_fraction);
   get_if_exists(jb, "halo_sigma_mm", cfg.beam.halo_sigma_mm);
+  get_if_exists(jb, "halo_sigma_scale", cfg.beam.halo_sigma_scale);
+
+  if (jb.contains("defect")) {
+    const auto& jd = jb.at("defect");
+    get_if_exists(jd, "offset_mm", cfg.beam.offset_mm);
+    get_if_exists(jd, "tilt_mrad", cfg.beam.tilt_mrad);
+    get_if_exists(jd, "halo_fraction", cfg.beam.halo_fraction);
+    get_if_exists(jd, "halo_sigma_scale", cfg.beam.halo_sigma_scale);
+  }
+
+  if (cfg.beam.mode != "cw" && cfg.beam.mode != "pulsed") {
+    throw std::runtime_error("Config validation failed: beam.mode must be 'cw' or 'pulsed'");
+  }
+  if (cfg.beam.energy_spread_model != "gauss" && cfg.beam.energy_spread_model != "uniform") {
+    throw std::runtime_error("Config validation failed: beam.energy_spread_model must be 'gauss' or 'uniform'");
+  }
 
   const auto& jt = j.at("target");
   get_if_exists(jt, "type", cfg.target.type);
@@ -103,7 +142,7 @@ AppConfig LoadConfig(const std::string& path) {
   get_if_exists(jr, "enableVis", cfg.run.enableVis);
   get_if_exists(jr, "enableEventTree", cfg.run.enableEventTree);
   if (cfg.run.nThreads < 0) {
-    cfg.run.nThreads = 0; // nThreads=0 means auto.
+    cfg.run.nThreads = 0;
   }
   if (cfg.run.outputDir.empty()) {
     cfg.run.outputDir = "results";
@@ -127,7 +166,6 @@ AppConfig LoadConfig(const std::string& path) {
     get_if_exists(jg, "target_region_extra_clearance_mm", cfg.geometry.target_region_extra_clearance_mm);
   }
 
-  // Future extension point: dedicated defects section with richer parametrization.
   if (j.contains("defects")) {
     const auto& jd = j.at("defects");
     get_if_exists(jd, "mode", cfg.defects.mode);
@@ -135,6 +173,5 @@ AppConfig LoadConfig(const std::string& path) {
     cfg.defects.mode = cfg.beam.defect_mode;
   }
 
-  // Unknown and _comment fields are ignored naturally by selective extraction.
   return cfg;
 }

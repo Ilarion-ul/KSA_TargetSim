@@ -9,18 +9,47 @@
 // Conversion to Geant4 units is done at use-sites in simulation code.
 
 struct BeamConfig {
+  // Central energy and energy spread.
   double energy_MeV{100.0};
-  double sigmaX_mm{1.0};
-  double sigmaY_mm{1.0};
-  double divergence_mrad{1.0};
-  std::array<double, 3> position_mm{0.0, 0.0, -5.0};
-  std::array<double, 3> direction{0.0, 0.0, 1.0};
+  double energy_sigma_rel_1sigma{0.01};
+  double energy_uniform_rel_halfspan{0.04};
+  std::string energy_spread_model{"gauss"}; // gauss | uniform
 
+  // Position and nominal direction.
+  std::array<double, 3> position_mm{0.0, 0.0, -5.0}; // alias: pos_mm
+  std::array<double, 3> direction{0.0, 0.0, 1.0};    // alias: dir
+
+  // Transverse beam spot.
+  double sigmaX_mm{1.0}; // alias: sigma_x_mm
+  double sigmaY_mm{1.0}; // alias: sigma_y_mm
+
+  // Angular spread (direct mode).
+  double sigma_theta_x_mrad{1.0};
+  double sigma_theta_y_mrad{1.0};
+
+  // Legacy angle key (kept for compatibility).
+  double divergence_mrad{1.0};
+
+  // Optional emit-based approximation.
+  double norm_emit_m_rad{5e-7};
+  bool use_emit_model{false};
+  std::string emit_sigma_theta_from{"eps_over_sigma"};
+
+  // Beam operation mode metadata.
+  std::string mode{"cw"}; // cw | pulsed
+  double pulse_width_us{2.7};
+  double rep_rate_Hz{625.0};
+  double I_pulse_A{0.6};
+  double I_avg_A{0.001};
+  double beam_power_kW{100.0};
+
+  // Defect model.
   std::string defect_mode{"ideal"}; // ideal / offset / tilt / halo
-  std::array<double, 3> offset_mm{0.0, 0.0, 0.0};
-  std::array<double, 2> tilt_mrad{0.0, 0.0};
+  std::array<double, 3> offset_mm{0.0, 0.0, 0.0}; // defect.offset_mm
+  std::array<double, 2> tilt_mrad{0.0, 0.0};      // defect.tilt_mrad
   double halo_fraction{0.0};
   double halo_sigma_mm{3.0};
+  double halo_sigma_scale{5.0};
 };
 
 struct TargetConfig {
