@@ -4,6 +4,7 @@
 
 #include <G4ParticleDefinition.hh>
 #include <G4Step.hh>
+#include <G4SystemOfUnits.hh>
 #include <G4Track.hh>
 
 namespace {
@@ -50,6 +51,10 @@ void SteppingAction::UserSteppingAction(const G4Step* step) {
     return;
   }
 
+  const auto* prePoint = step->GetPreStepPoint();
+  const auto globalPos = prePoint->GetPosition();
+  const auto localPos = prePoint->GetTouchableHandle()->GetHistory()->GetTopTransform().TransformPoint(globalPos);
+
   if (IsSubstrateVolume(name)) {
     eventAction_->AddEdepSubstrate(edep);
   } else if (IsCoatingVolume(name)) {
@@ -57,6 +62,9 @@ void SteppingAction::UserSteppingAction(const G4Step* step) {
   }
   const int plateIndex = PlateIndexFromCopyNo(step->GetPreStepPoint()->GetTouchableHandle()->GetCopyNumber());
   eventAction_->AddPlateEdep(plateIndex, edep);
+  if (edep > 0.0) {
+    eventAction_->AddEdep3d(globalPos.x() / mm, globalPos.y() / mm, globalPos.z() / mm, edep);
+  }
 
   // Minimal particle counting metric:
   // count unique gamma/neutron track IDs that appear in target volume.
@@ -69,7 +77,9 @@ void SteppingAction::UserSteppingAction(const G4Step* step) {
     eventAction_->CountGamma(track->GetTrackID());
   } else if (particleName == "neutron") {
     eventAction_->CountNeutron(track->GetTrackID());
-    eventAction_->AddPlateNeutronTrackLen(plateIndex, step->GetStepLength());
+    const double stepLen = step->GetStepLength();
+    eventAction_->AddPlateNeutronTrackLen(plateIndex, stepLen);
+    eventAction_->AddPlateNeutronHeatmap(plateIndex, localPos.x() / mm, localPos.y() / mm, stepLen);
     if (step->GetPostStepPoint()) {
       const auto* postVolume = step->GetPostStepPoint()->GetTouchableHandle()
                                    ? step->GetPostStepPoint()->GetTouchableHandle()->GetVolume()
