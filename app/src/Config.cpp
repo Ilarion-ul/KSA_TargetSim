@@ -74,7 +74,16 @@ AppConfig LoadConfig(const std::string& path) {
 
   if (jb.contains("defect")) {
     const auto& jd = jb.at("defect");
-    get_if_exists(jd, "offset_mm", cfg.beam.offset_mm);
+    if (jd.contains("offset_mm")) {
+      std::vector<double> tmp = jd.at("offset_mm").get<std::vector<double>>();
+      if (tmp.size() == 2) {
+        cfg.beam.offset_mm = {tmp[0], tmp[1], 0.0};
+      } else if (tmp.size() == 3) {
+        cfg.beam.offset_mm = {tmp[0], tmp[1], tmp[2]};
+      } else {
+        throw std::runtime_error("Config validation failed: beam.defect.offset_mm must have 2 or 3 values");
+      }
+    }
     get_if_exists(jd, "tilt_mrad", cfg.beam.tilt_mrad);
     get_if_exists(jd, "halo_fraction", cfg.beam.halo_fraction);
     get_if_exists(jd, "halo_sigma_scale", cfg.beam.halo_sigma_scale);

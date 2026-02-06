@@ -133,7 +133,7 @@ void RunAction::EndOfRunAction(const G4Run* run) {
     rootFile_ = nullptr;
     runTree_ = nullptr;
   }
-#else
+#endif
   const auto out = base / "logs" / "run_summary.json";
   std::ofstream os(out);
   os << "{\n";
@@ -156,7 +156,6 @@ void RunAction::EndOfRunAction(const G4Run* run) {
   os << "    \"beam_power_kW\": " << config_.beam.beam_power_kW << "\n";
   os << "  }\n";
   os << "}\n";
-#endif
 }
 
 void RunAction::AccumulateEvent(double edepSubstrate, double edepCoating, int nGamma, int nNeutron) {
