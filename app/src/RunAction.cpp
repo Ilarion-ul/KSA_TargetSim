@@ -391,6 +391,9 @@ void RunAction::EndOfRunAction(const G4Run* run) {
       const double zMax = edepBounds_.zMaxMm;
       auto* h3 = new TH3D("edep_3d", "Energy deposition 3D", edepBinsX_, xMin, xMax, edepBinsY_, yMin, yMax,
                           edepBinsZ_, zMin, zMax);
+      auto* h2_edep_xy_mid = new TH2D("h2_edep_xy_mid", "Energy deposition XY (mid-plane)",
+                                      edepBinsX_, xMin, xMax, edepBinsY_, yMin, yMax);
+      const int midZ = edepBinsZ_ / 2;
       for (int iz = 0; iz < edepBinsZ_; ++iz) {
         for (int iy = 0; iy < edepBinsY_; ++iy) {
           for (int ix = 0; ix < edepBinsX_; ++ix) {
@@ -399,11 +402,15 @@ void RunAction::EndOfRunAction(const G4Run* run) {
                                static_cast<size_t>(ix);
             if (idx < edep3dMeV.size()) {
               h3->SetBinContent(ix + 1, iy + 1, iz + 1, edep3dMeV[idx]);
+              if (iz == midZ) {
+                h2_edep_xy_mid->SetBinContent(ix + 1, iy + 1, edep3dMeV[idx]);
+              }
             }
           }
         }
       }
       h3->Write();
+      h2_edep_xy_mid->Write();
     }
     if (!neutronSurfaceHits.empty()) {
       auto* neutronTree = new TTree("NeutronSurf", "Neutron surface crossings");
