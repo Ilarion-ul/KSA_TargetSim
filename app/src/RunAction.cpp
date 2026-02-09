@@ -16,6 +16,7 @@
 
 #include <fstream>
 #include <vector>
+#include <sstream>
 
 #ifdef KSA_USE_ROOT
 #include <TH2D.h>
@@ -103,6 +104,7 @@ std::vector<double> gTotalPlateEdep;
 std::vector<double> gTotalPlateNeutronTrackLen;
 std::vector<double> gTotalPlateNeutronHeatmap;
 std::vector<double> gTotalEdep3d;
+std::vector<RunAction::NeutronSurfaceHit> gNeutronSurfaceHits;
 }
 
 void RunAction::BeginOfRunAction(const G4Run*) {
@@ -121,6 +123,7 @@ void RunAction::BeginOfRunAction(const G4Run*) {
                                      0.0);
     gTotalEdep3d.assign(static_cast<size_t>(edepBinsX_) * static_cast<size_t>(edepBinsY_) * static_cast<size_t>(edepBinsZ_),
                         0.0);
+    gNeutronSurfaceHits.clear();
   }
 
   const auto base = fs::path(config_.run.outputDir.empty() ? "results" : config_.run.outputDir);
@@ -156,6 +159,7 @@ void RunAction::EndOfRunAction(const G4Run* run) {
   std::vector<double> plateNeutronTrackLen;
   std::vector<double> plateNeutronHeatmap;
   std::vector<double> edep3d;
+  std::vector<NeutronSurfaceHit> neutronSurfaceHits;
   {
     std::lock_guard<std::mutex> lock(gRunSummaryMutex);
     edepSub = gTotalEdepSubstrate;
@@ -167,6 +171,7 @@ void RunAction::EndOfRunAction(const G4Run* run) {
     plateNeutronTrackLen = gTotalPlateNeutronTrackLen;
     plateNeutronHeatmap = gTotalPlateNeutronHeatmap;
     edep3d = gTotalEdep3d;
+    neutronSurfaceHits = gNeutronSurfaceHits;
   }
 
   std::vector<double> plateEdepMeV;
@@ -236,6 +241,76 @@ void RunAction::EndOfRunAction(const G4Run* run) {
     runTree_->Fill();
 
     rootFile_->cd();
+    {
+      auto* metaTree = new TTree("RunMeta", "Run metadata");
+      std::string target_type = config_.target.type;
+      std::string geometry_json;
+      {
+        std::ostringstream os;
+        os << "{";
+        os << "\"plate_thicknesses_mm\":[";
+        for (size_t i = 0; i < config_.target.plate_thicknesses_mm.size(); ++i) {
+          os << config_.target.plate_thicknesses_mm[i];
+          if (i + 1 < config_.target.plate_thicknesses_mm.size()) os << ",";
+        }
+        os << "],";
+        os << "\"plate_xy_mm\":" << config_.target.plate_xy_mm << ",";
+        os << "\"water_gap_mm\":" << config_.target.water_gap_mm << ",";
+        os << "\"clad_ta_mm\":" << config_.target.clad_ta_mm << ",";
+        os << "\"buffer_ti_mm\":" << config_.target.buffer_ti_mm << ",";
+        os << "\"assembly_thickness_mm\":" << config_.target.assembly_thickness_mm << ",";
+        os << "\"clad_thickness_front_mm\":" << config_.target.clad_thickness_front_mm << ",";
+        os << "\"clad_thickness_rest_mm\":" << config_.target.clad_thickness_rest_mm << ",";
+        os << "\"gap_inout_mm\":" << config_.target.gap_inout_mm << ",";
+        os << "\"gap_mid_mm\":" << config_.target.gap_mid_mm << ",";
+        os << "\"housing_inner_xy_mm\":" << config_.target.housing_inner_xy_mm << ",";
+        os << "\"housing_wall_mm\":" << config_.target.housing_wall_mm << ",";
+        os << "\"entrance_window_mm\":" << config_.target.entrance_window_mm << ",";
+        os << "\"helium_chamber_len_mm\":" << config_.target.helium_chamber_len_mm << ",";
+        os << "\"u7mo_density_g_cm3\":" << config_.target.u7mo_density_g_cm3 << ",";
+        os << "\"fill_medium_in_target\":\"" << config_.target.fill_medium_in_target << "\"";
+        os << "}";
+        geometry_json = os.str();
+      }
+      double beam_energy_MeV = config_.beam.energy_MeV;
+      double beam_energy_sigma_rel = config_.beam.energy_sigma_rel_1sigma;
+      double beam_sigma_x_mm = config_.beam.sigmaX_mm;
+      double beam_sigma_y_mm = config_.beam.sigmaY_mm;
+      double beam_sigma_theta_x_mrad = config_.beam.sigma_theta_x_mrad;
+      double beam_sigma_theta_y_mrad = config_.beam.sigma_theta_y_mrad;
+      std::string pulse_mode = config_.beam.mode;
+      double pulse_width_us = config_.beam.pulse_width_us;
+      double rep_rate_Hz = config_.beam.rep_rate_Hz;
+      double I_pulse_A = config_.beam.I_pulse_A;
+      double I_avg_A = config_.beam.I_avg_A;
+      double duty = (config_.beam.pulse_width_us * 1e-6) * config_.beam.rep_rate_Hz;
+      double P_avg_kW = config_.beam.beam_power_kW;
+      int nEvents = run ? run->GetNumberOfEvent() : config_.run.nEvents;
+      int nThreads = config_.run.nThreads;
+      double per_primary = 1.0;
+      double N_e_per_s = I_avg_A / 1.602176634e-19;
+      metaTree->Branch("target_type", &target_type);
+      metaTree->Branch("geometry_json", &geometry_json);
+      metaTree->Branch("beam_energy_MeV", &beam_energy_MeV);
+      metaTree->Branch("beam_energy_sigma_rel", &beam_energy_sigma_rel);
+      metaTree->Branch("beam_sigma_x_mm", &beam_sigma_x_mm);
+      metaTree->Branch("beam_sigma_y_mm", &beam_sigma_y_mm);
+      metaTree->Branch("beam_sigma_theta_x_mrad", &beam_sigma_theta_x_mrad);
+      metaTree->Branch("beam_sigma_theta_y_mrad", &beam_sigma_theta_y_mrad);
+      metaTree->Branch("pulse_mode", &pulse_mode);
+      metaTree->Branch("pulse_width_us", &pulse_width_us);
+      metaTree->Branch("rep_rate_Hz", &rep_rate_Hz);
+      metaTree->Branch("I_pulse_A", &I_pulse_A);
+      metaTree->Branch("I_avg_A", &I_avg_A);
+      metaTree->Branch("duty", &duty);
+      metaTree->Branch("P_avg_kW", &P_avg_kW);
+      metaTree->Branch("nEvents", &nEvents);
+      metaTree->Branch("nThreads", &nThreads);
+      metaTree->Branch("per_primary", &per_primary);
+      metaTree->Branch("N_e_per_s", &N_e_per_s);
+      metaTree->Fill();
+      metaTree->Write();
+    }
     if (plateHeatmapBinsX_ > 0 && plateHeatmapBinsY_ > 0) {
       const double xMin = plateHeatmapBounds_.xMinMm;
       const double xMax = plateHeatmapBounds_.xMaxMm;
@@ -281,6 +356,59 @@ void RunAction::EndOfRunAction(const G4Run* run) {
         }
       }
       h3->Write();
+    }
+    if (!neutronSurfaceHits.empty()) {
+      auto* neutronTree = new TTree("NeutronSurf", "Neutron surface crossings");
+      int event_id = 0;
+      double En_MeV = 0.0;
+      double x_mm = 0.0;
+      double y_mm = 0.0;
+      double z_mm = 0.0;
+      double cosTheta = 0.0;
+      double weight = 1.0;
+      double time_ns = 0.0;
+      int surface_id = 0;
+      std::string surface_name;
+      neutronTree->Branch("event_id", &event_id);
+      neutronTree->Branch("En_MeV", &En_MeV);
+      neutronTree->Branch("x_mm", &x_mm);
+      neutronTree->Branch("y_mm", &y_mm);
+      neutronTree->Branch("z_mm", &z_mm);
+      neutronTree->Branch("cosTheta", &cosTheta);
+      neutronTree->Branch("weight", &weight);
+      neutronTree->Branch("time_ns", &time_ns);
+      neutronTree->Branch("surface_id", &surface_id);
+      neutronTree->Branch("surface_name", &surface_name);
+      for (const auto& hit : neutronSurfaceHits) {
+        event_id = hit.event_id;
+        En_MeV = hit.En_MeV;
+        x_mm = hit.x_mm;
+        y_mm = hit.y_mm;
+        z_mm = hit.z_mm;
+        cosTheta = hit.cosTheta;
+        weight = hit.weight;
+        time_ns = hit.time_ns;
+        surface_id = hit.surface_id;
+        switch (surface_id) {
+          case 0:
+            surface_name = "downstream";
+            break;
+          case 1:
+            surface_name = "upstream";
+            break;
+          case 2:
+            surface_name = "side_x";
+            break;
+          case 3:
+            surface_name = "side_y";
+            break;
+          default:
+            surface_name = "unknown";
+            break;
+        }
+        neutronTree->Fill();
+      }
+      neutronTree->Write();
     }
     runTree_->Write();
     rootFile_->Close();
@@ -388,11 +516,14 @@ void RunAction::AccumulateEvent(double edepSubstrate,
                                 int nGamma,
                                 int nNeutron,
                                 int nNeutronExit,
+                                int eventId,
                                 const std::vector<double>& plateEdep,
                                 const std::vector<double>& plateNeutronTrackLen,
                                 const std::vector<double>& plateNeutronHeatmap,
-                                const std::vector<double>& edep3d) {
+                                const std::vector<double>& edep3d,
+                                const std::vector<NeutronSurfaceHit>& neutronSurfaceHits) {
   std::lock_guard<std::mutex> lock(gRunSummaryMutex);
+  (void)eventId;
   gTotalEdepSubstrate += edepSubstrate;
   gTotalEdepCoating += edepCoating;
   gTotalGamma += nGamma;
@@ -421,6 +552,9 @@ void RunAction::AccumulateEvent(double edepSubstrate,
   }
   for (size_t i = 0; i < edep3d.size(); ++i) {
     gTotalEdep3d[i] += edep3d[i];
+  }
+  if (!neutronSurfaceHits.empty()) {
+    gNeutronSurfaceHits.insert(gNeutronSurfaceHits.end(), neutronSurfaceHits.begin(), neutronSurfaceHits.end());
   }
   // TODO: migrate to G4Accumulable/G4AnalysisManager for richer MT-safe reporting.
 }

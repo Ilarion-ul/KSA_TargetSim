@@ -2,6 +2,8 @@
 
 #include "RunAction.h"
 
+#include <G4Event.hh>
+
 namespace {
 int ClampBin(double value, double minValue, double maxValue, int bins) {
   if (bins <= 0 || value < minValue || value >= maxValue) {
@@ -41,6 +43,12 @@ EventAction::EventAction(RunAction* runAction) : runAction_(runAction) {
     edepYMaxMm_ = edepBounds.yMaxMm;
     edepZMinMm_ = edepBounds.zMinMm;
     edepZMaxMm_ = edepBounds.zMaxMm;
+    targetXMinMm_ = edepBounds.xMinMm;
+    targetXMaxMm_ = edepBounds.xMaxMm;
+    targetYMinMm_ = edepBounds.yMinMm;
+    targetYMaxMm_ = edepBounds.yMaxMm;
+    targetZMinMm_ = edepBounds.zMinMm;
+    targetZMaxMm_ = edepBounds.zMaxMm;
 
     const size_t plateHeatmapSize = runAction_->PlateCount() * static_cast<size_t>(plateHeatmapBinsX_) *
                                     static_cast<size_t>(plateHeatmapBinsY_);
@@ -51,7 +59,8 @@ EventAction::EventAction(RunAction* runAction) : runAction_(runAction) {
   }
 }
 
-void EventAction::BeginOfEventAction(const G4Event*) {
+void EventAction::BeginOfEventAction(const G4Event* event) {
+  eventId_ = event ? event->GetEventID() : 0;
   edepSubstrate_ = 0.0;
   edepCoating_ = 0.0;
   nGamma_ = 0;
@@ -64,12 +73,13 @@ void EventAction::BeginOfEventAction(const G4Event*) {
   std::fill(plateNeutronTrackLen_.begin(), plateNeutronTrackLen_.end(), 0.0);
   std::fill(plateNeutronHeatmap_.begin(), plateNeutronHeatmap_.end(), 0.0);
   std::fill(edep3d_.begin(), edep3d_.end(), 0.0);
+  neutronSurfaceHits_.clear();
 }
 
 void EventAction::EndOfEventAction(const G4Event*) {
   if (runAction_) {
-    runAction_->AccumulateEvent(edepSubstrate_, edepCoating_, nGamma_, nNeutron_, nNeutronExit_, plateEdep_,
-                                plateNeutronTrackLen_, plateNeutronHeatmap_, edep3d_);
+    runAction_->AccumulateEvent(edepSubstrate_, edepCoating_, nGamma_, nNeutron_, nNeutronExit_, eventId_, plateEdep_,
+                                plateNeutronTrackLen_, plateNeutronHeatmap_, edep3d_, neutronSurfaceHits_);
   }
 }
 
@@ -116,6 +126,27 @@ void EventAction::AddEdep3d(double xMm, double yMm, double zMm, double edep) {
                      static_cast<size_t>(ix);
   if (idx >= edep3d_.size()) return;
   edep3d_[idx] += edep;
+}
+
+void EventAction::AddNeutronSurfaceHit(double EnMeV,
+                                       double xMm,
+                                       double yMm,
+                                       double zMm,
+                                       double cosTheta,
+                                       double weight,
+                                       double timeNs,
+                                       int surfaceId) {
+  RunAction::NeutronSurfaceHit hit;
+  hit.event_id = eventId_;
+  hit.En_MeV = EnMeV;
+  hit.x_mm = xMm;
+  hit.y_mm = yMm;
+  hit.z_mm = zMm;
+  hit.cosTheta = cosTheta;
+  hit.weight = weight;
+  hit.time_ns = timeNs;
+  hit.surface_id = surfaceId;
+  neutronSurfaceHits_.push_back(hit);
 }
 
 void EventAction::CountGamma(int trackId) {

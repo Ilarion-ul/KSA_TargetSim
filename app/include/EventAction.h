@@ -2,12 +2,12 @@
 
 #include <G4UserEventAction.hh>
 
-#include <vector>
+#include "RunAction.h"
+
 #include <unordered_set>
+#include <vector>
 
 class G4Event;
-class RunAction;
-
 class EventAction : public G4UserEventAction {
  public:
   explicit EventAction(RunAction* runAction);
@@ -22,6 +22,20 @@ class EventAction : public G4UserEventAction {
   void AddPlateNeutronTrackLen(int plateIndex, double stepLen);
   void AddPlateNeutronHeatmap(int plateIndex, double xMm, double yMm, double stepLen);
   void AddEdep3d(double xMm, double yMm, double zMm, double edep);
+  void AddNeutronSurfaceHit(double EnMeV,
+                            double xMm,
+                            double yMm,
+                            double zMm,
+                            double cosTheta,
+                            double weight,
+                            double timeNs,
+                            int surfaceId);
+  double TargetXMinMm() const { return targetXMinMm_; }
+  double TargetXMaxMm() const { return targetXMaxMm_; }
+  double TargetYMinMm() const { return targetYMinMm_; }
+  double TargetYMaxMm() const { return targetYMaxMm_; }
+  double TargetZMinMm() const { return targetZMinMm_; }
+  double TargetZMaxMm() const { return targetZMaxMm_; }
   void CountGamma(int trackId);
   void CountNeutron(int trackId);
   void CountNeutronExit(int trackId);
@@ -42,9 +56,16 @@ class EventAction : public G4UserEventAction {
   double edepYMaxMm_{0.0};
   double edepZMinMm_{0.0};
   double edepZMaxMm_{0.0};
+  double targetXMinMm_{0.0};
+  double targetXMaxMm_{0.0};
+  double targetYMinMm_{0.0};
+  double targetYMaxMm_{0.0};
+  double targetZMinMm_{0.0};
+  double targetZMaxMm_{0.0};
 
   RunAction* runAction_{nullptr};
 
+  int eventId_{0};
   double edepSubstrate_{0.0};
   double edepCoating_{0.0};
   int nGamma_{0};
@@ -54,6 +75,7 @@ class EventAction : public G4UserEventAction {
   std::vector<double> plateNeutronTrackLen_;
   std::vector<double> plateNeutronHeatmap_;
   std::vector<double> edep3d_;
+  std::vector<RunAction::NeutronSurfaceHit> neutronSurfaceHits_;
 
   std::unordered_set<int> gammaTrackIds_;
   std::unordered_set<int> neutronTrackIds_;

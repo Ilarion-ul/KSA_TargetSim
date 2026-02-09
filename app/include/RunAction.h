@@ -12,6 +12,18 @@ class G4Run;
 
 class RunAction : public G4UserRunAction {
  public:
+  struct NeutronSurfaceHit {
+    int event_id{0};
+    double En_MeV{0.0};
+    double x_mm{0.0};
+    double y_mm{0.0};
+    double z_mm{0.0};
+    double cosTheta{0.0};
+    double weight{1.0};
+    double time_ns{0.0};
+    int surface_id{0};
+  };
+
   struct HeatmapBounds {
     double xMinMm;
     double xMaxMm;
@@ -32,10 +44,12 @@ class RunAction : public G4UserRunAction {
                        int nGamma,
                        int nNeutron,
                        int nNeutronExit,
+                       int eventId,
                        const std::vector<double>& plateEdep,
                        const std::vector<double>& plateNeutronTrackLen,
                        const std::vector<double>& plateNeutronHeatmap,
-                       const std::vector<double>& edep3d);
+                       const std::vector<double>& edep3d,
+                       const std::vector<NeutronSurfaceHit>& neutronSurfaceHits);
   size_t PlateCount() const { return plateCount_; }
   int PlateHeatmapBinsX() const { return plateHeatmapBinsX_; }
   int PlateHeatmapBinsY() const { return plateHeatmapBinsY_; }

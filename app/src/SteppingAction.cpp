@@ -32,6 +32,10 @@ int PlateIndexFromCopyNo(int copyNo) {
   }
   return 0;
 }
+
+bool IsInsideBounds(const G4ThreeVector& pos, double xMin, double xMax, double yMin, double yMax, double zMin, double zMax) {
+  return pos.x() >= xMin && pos.x() <= xMax && pos.y() >= yMin && pos.y() <= yMax && pos.z() >= zMin && pos.z() <= zMax;
+}
 }
 
 SteppingAction::SteppingAction(EventAction* eventAction) : eventAction_(eventAction) {}
@@ -80,6 +84,32 @@ void SteppingAction::UserSteppingAction(const G4Step* step) {
     const double stepLen = step->GetStepLength();
     eventAction_->AddPlateNeutronTrackLen(plateIndex, stepLen);
     eventAction_->AddPlateNeutronHeatmap(plateIndex, localPos.x() / mm, localPos.y() / mm, stepLen);
+    const auto prePos = prePoint->GetPosition();
+    const auto postPos = step->GetPostStepPoint() ? step->GetPostStepPoint()->GetPosition() : prePos;
+    const double xMin = eventAction_->TargetXMinMm() * mm;
+    const double xMax = eventAction_->TargetXMaxMm() * mm;
+    const double yMin = eventAction_->TargetYMinMm() * mm;
+    const double yMax = eventAction_->TargetYMaxMm() * mm;
+    const double zMin = eventAction_->TargetZMinMm() * mm;
+    const double zMax = eventAction_->TargetZMaxMm() * mm;
+    const bool preInside = IsInsideBounds(prePos, xMin, xMax, yMin, yMax, zMin, zMax);
+    const bool postInside = IsInsideBounds(postPos, xMin, xMax, yMin, yMax, zMin, zMax);
+    if (preInside && !postInside) {
+      int surfaceId = 0;
+      if (postPos.z() > zMax) {
+        surfaceId = 0;
+      } else if (postPos.z() < zMin) {
+        surfaceId = 1;
+      } else if (postPos.x() < xMin || postPos.x() > xMax) {
+        surfaceId = 2;
+      } else if (postPos.y() < yMin || postPos.y() > yMax) {
+        surfaceId = 3;
+      }
+      const double EnMeV = track->GetKineticEnergy() / MeV;
+      const double cosTheta = track->GetMomentumDirection().z();
+      eventAction_->AddNeutronSurfaceHit(EnMeV, postPos.x() / mm, postPos.y() / mm, postPos.z() / mm, cosTheta,
+                                         track->GetWeight(), track->GetGlobalTime() / ns, surfaceId);
+    }
     if (step->GetPostStepPoint()) {
       const auto* postVolume = step->GetPostStepPoint()->GetTouchableHandle()
                                    ? step->GetPostStepPoint()->GetTouchableHandle()->GetVolume()
