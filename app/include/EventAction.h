@@ -30,6 +30,9 @@ class EventAction : public G4UserEventAction {
                             double weight,
                             double timeNs,
                             int surfaceId);
+  void AddPlateNiel(int plateIndex, double niel);
+  void AddPlateGasH(int plateIndex, double count);
+  void AddPlateGasHe(int plateIndex, double count);
   double TargetXMinMm() const { return targetXMinMm_; }
   double TargetXMaxMm() const { return targetXMaxMm_; }
   double TargetYMinMm() const { return targetYMinMm_; }
@@ -75,6 +78,9 @@ class EventAction : public G4UserEventAction {
   std::vector<double> plateNeutronTrackLen_;
   std::vector<double> plateNeutronHeatmap_;
   std::vector<double> edep3d_;
+  std::vector<double> plateNiel_;
+  std::vector<double> plateGasH_;
+  std::vector<double> plateGasHe_;
   std::vector<RunAction::NeutronSurfaceHit> neutronSurfaceHits_;
 
   std::unordered_set<int> gammaTrackIds_;

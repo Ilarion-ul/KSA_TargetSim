@@ -56,6 +56,9 @@ EventAction::EventAction(RunAction* runAction) : runAction_(runAction) {
     const size_t edep3dSize = static_cast<size_t>(edepBinsX_) * static_cast<size_t>(edepBinsY_) *
                               static_cast<size_t>(edepBinsZ_);
     edep3d_.assign(edep3dSize, 0.0);
+    plateNiel_.assign(runAction_->PlateCount(), 0.0);
+    plateGasH_.assign(runAction_->PlateCount(), 0.0);
+    plateGasHe_.assign(runAction_->PlateCount(), 0.0);
   }
 }
 
@@ -73,13 +76,17 @@ void EventAction::BeginOfEventAction(const G4Event* event) {
   std::fill(plateNeutronTrackLen_.begin(), plateNeutronTrackLen_.end(), 0.0);
   std::fill(plateNeutronHeatmap_.begin(), plateNeutronHeatmap_.end(), 0.0);
   std::fill(edep3d_.begin(), edep3d_.end(), 0.0);
+  std::fill(plateNiel_.begin(), plateNiel_.end(), 0.0);
+  std::fill(plateGasH_.begin(), plateGasH_.end(), 0.0);
+  std::fill(plateGasHe_.begin(), plateGasHe_.end(), 0.0);
   neutronSurfaceHits_.clear();
 }
 
 void EventAction::EndOfEventAction(const G4Event*) {
   if (runAction_) {
     runAction_->AccumulateEvent(edepSubstrate_, edepCoating_, nGamma_, nNeutron_, nNeutronExit_, eventId_, plateEdep_,
-                                plateNeutronTrackLen_, plateNeutronHeatmap_, edep3d_, neutronSurfaceHits_);
+                                plateNeutronTrackLen_, plateNeutronHeatmap_, edep3d_, neutronSurfaceHits_, plateNiel_,
+                                plateGasH_, plateGasHe_);
   }
 }
 
@@ -147,6 +154,27 @@ void EventAction::AddNeutronSurfaceHit(double EnMeV,
   hit.time_ns = timeNs;
   hit.surface_id = surfaceId;
   neutronSurfaceHits_.push_back(hit);
+}
+
+void EventAction::AddPlateNiel(int plateIndex, double niel) {
+  if (plateIndex < 0 || static_cast<size_t>(plateIndex) >= plateNiel_.size()) {
+    return;
+  }
+  plateNiel_[static_cast<size_t>(plateIndex)] += niel;
+}
+
+void EventAction::AddPlateGasH(int plateIndex, double count) {
+  if (plateIndex < 0 || static_cast<size_t>(plateIndex) >= plateGasH_.size()) {
+    return;
+  }
+  plateGasH_[static_cast<size_t>(plateIndex)] += count;
+}
+
+void EventAction::AddPlateGasHe(int plateIndex, double count) {
+  if (plateIndex < 0 || static_cast<size_t>(plateIndex) >= plateGasHe_.size()) {
+    return;
+  }
+  plateGasHe_[static_cast<size_t>(plateIndex)] += count;
 }
 
 void EventAction::CountGamma(int trackId) {

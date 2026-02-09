@@ -49,7 +49,10 @@ class RunAction : public G4UserRunAction {
                        const std::vector<double>& plateNeutronTrackLen,
                        const std::vector<double>& plateNeutronHeatmap,
                        const std::vector<double>& edep3d,
-                       const std::vector<NeutronSurfaceHit>& neutronSurfaceHits);
+                       const std::vector<NeutronSurfaceHit>& neutronSurfaceHits,
+                       const std::vector<double>& plateNiel,
+                       const std::vector<double>& plateGasH,
+                       const std::vector<double>& plateGasHe);
   size_t PlateCount() const { return plateCount_; }
   int PlateHeatmapBinsX() const { return plateHeatmapBinsX_; }
   int PlateHeatmapBinsY() const { return plateHeatmapBinsY_; }
@@ -80,6 +83,9 @@ class RunAction : public G4UserRunAction {
   std::vector<double> totalPlateNeutronTrackLen_;
   std::vector<double> totalPlateNeutronHeatmap_;
   std::vector<double> totalEdep3d_;
+  std::vector<double> totalPlateNiel_;
+  std::vector<double> totalPlateGasH_;
+  std::vector<double> totalPlateGasHe_;
 
 #ifdef KSA_USE_ROOT
   class TFile* rootFile_{nullptr};

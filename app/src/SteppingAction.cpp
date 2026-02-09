@@ -3,6 +3,7 @@
 #include "EventAction.h"
 
 #include <G4ParticleDefinition.hh>
+#include <G4ParticleTable.hh>
 #include <G4Step.hh>
 #include <G4SystemOfUnits.hh>
 #include <G4Track.hh>
@@ -121,6 +122,25 @@ void SteppingAction::UserSteppingAction(const G4Step* step) {
       const auto postName = postVolume ? postVolume->GetName() : G4String();
       if (!postVolume || !IsPlateVolume(postName)) {
         eventAction_->CountNeutronExit(track->GetTrackID());
+      }
+    }
+  }
+
+  if (inPlate) {
+    const double niel = step->GetNonIonizingEnergyDeposit();
+    if (niel > 0.0) {
+      eventAction_->AddPlateNiel(plateIndex, niel);
+    }
+    const auto* secondaries = step->GetSecondaryInCurrentStep();
+    if (secondaries && !secondaries->empty()) {
+      for (const auto* secondary : *secondaries) {
+        if (!secondary || !secondary->GetDefinition()) continue;
+        const auto nameSec = secondary->GetDefinition()->GetParticleName();
+        if (nameSec == "proton" || nameSec == "deuteron" || nameSec == "triton") {
+          eventAction_->AddPlateGasH(plateIndex, secondary->GetWeight());
+        } else if (nameSec == "alpha" || nameSec == "He3") {
+          eventAction_->AddPlateGasHe(plateIndex, secondary->GetWeight());
+        }
       }
     }
   }

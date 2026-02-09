@@ -153,6 +153,9 @@ std::vector<double> gTotalPlateNeutronTrackLen;
 std::vector<double> gTotalPlateNeutronHeatmap;
 std::vector<double> gTotalEdep3d;
 std::vector<RunAction::NeutronSurfaceHit> gNeutronSurfaceHits;
+std::vector<double> gTotalPlateNiel;
+std::vector<double> gTotalPlateGasH;
+std::vector<double> gTotalPlateGasHe;
 }
 
 void RunAction::BeginOfRunAction(const G4Run*) {
@@ -172,6 +175,9 @@ void RunAction::BeginOfRunAction(const G4Run*) {
     gTotalEdep3d.assign(static_cast<size_t>(edepBinsX_) * static_cast<size_t>(edepBinsY_) * static_cast<size_t>(edepBinsZ_),
                         0.0);
     gNeutronSurfaceHits.clear();
+    gTotalPlateNiel.assign(plateCount_, 0.0);
+    gTotalPlateGasH.assign(plateCount_, 0.0);
+    gTotalPlateGasHe.assign(plateCount_, 0.0);
   }
 
   const auto base = fs::path(config_.run.outputDir.empty() ? "results" : config_.run.outputDir);
@@ -208,6 +214,9 @@ void RunAction::EndOfRunAction(const G4Run* run) {
   std::vector<double> plateNeutronHeatmap;
   std::vector<double> edep3d;
   std::vector<NeutronSurfaceHit> neutronSurfaceHits;
+  std::vector<double> plateNiel;
+  std::vector<double> plateGasH;
+  std::vector<double> plateGasHe;
   {
     std::lock_guard<std::mutex> lock(gRunSummaryMutex);
     edepSub = gTotalEdepSubstrate;
@@ -220,6 +229,9 @@ void RunAction::EndOfRunAction(const G4Run* run) {
     plateNeutronHeatmap = gTotalPlateNeutronHeatmap;
     edep3d = gTotalEdep3d;
     neutronSurfaceHits = gNeutronSurfaceHits;
+    plateNiel = gTotalPlateNiel;
+    plateGasH = gTotalPlateGasH;
+    plateGasHe = gTotalPlateGasHe;
   }
 
   std::vector<double> plateEdepMeV;
@@ -241,6 +253,11 @@ void RunAction::EndOfRunAction(const G4Run* run) {
   edep3dMeV.reserve(edep3d.size());
   for (double value : edep3d) {
     edep3dMeV.push_back(value / MeV);
+  }
+  std::vector<double> plateNielMeV;
+  plateNielMeV.reserve(plateNiel.size());
+  for (double value : plateNiel) {
+    plateNielMeV.push_back(value / MeV);
   }
 
 #ifdef KSA_USE_ROOT
@@ -411,6 +428,32 @@ void RunAction::EndOfRunAction(const G4Run* run) {
       }
       h3->Write();
       h2_edep_xy_mid->Write();
+    }
+    if (!plateNielMeV.empty()) {
+      auto* h1_niel_plate = new TH1D("h1_niel_plate", "NIEL proxy per plate", static_cast<int>(plateNielMeV.size()), 0.5,
+                                     static_cast<double>(plateNielMeV.size()) + 0.5);
+      for (size_t i = 0; i < plateNielMeV.size(); ++i) {
+        h1_niel_plate->SetBinContent(static_cast<int>(i) + 1, plateNielMeV[i]);
+      }
+      h1_niel_plate->Write();
+    }
+    if (!plateGasH.empty()) {
+      auto* h1_gas_h_plate =
+          new TH1D("h1_gas_h_plate", "Hydrogen production per plate", static_cast<int>(plateGasH.size()), 0.5,
+                   static_cast<double>(plateGasH.size()) + 0.5);
+      for (size_t i = 0; i < plateGasH.size(); ++i) {
+        h1_gas_h_plate->SetBinContent(static_cast<int>(i) + 1, plateGasH[i]);
+      }
+      h1_gas_h_plate->Write();
+    }
+    if (!plateGasHe.empty()) {
+      auto* h1_gas_he_plate =
+          new TH1D("h1_gas_he_plate", "Helium production per plate", static_cast<int>(plateGasHe.size()), 0.5,
+                   static_cast<double>(plateGasHe.size()) + 0.5);
+      for (size_t i = 0; i < plateGasHe.size(); ++i) {
+        h1_gas_he_plate->SetBinContent(static_cast<int>(i) + 1, plateGasHe[i]);
+      }
+      h1_gas_he_plate->Write();
     }
     if (!neutronSurfaceHits.empty()) {
       auto* neutronTree = new TTree("NeutronSurf", "Neutron surface crossings");
@@ -627,7 +670,10 @@ void RunAction::AccumulateEvent(double edepSubstrate,
                                 const std::vector<double>& plateNeutronTrackLen,
                                 const std::vector<double>& plateNeutronHeatmap,
                                 const std::vector<double>& edep3d,
-                                const std::vector<NeutronSurfaceHit>& neutronSurfaceHits) {
+                                const std::vector<NeutronSurfaceHit>& neutronSurfaceHits,
+                                const std::vector<double>& plateNiel,
+                                const std::vector<double>& plateGasH,
+                                const std::vector<double>& plateGasHe) {
   std::lock_guard<std::mutex> lock(gRunSummaryMutex);
   (void)eventId;
   gTotalEdepSubstrate += edepSubstrate;
@@ -661,6 +707,24 @@ void RunAction::AccumulateEvent(double edepSubstrate,
   }
   if (!neutronSurfaceHits.empty()) {
     gNeutronSurfaceHits.insert(gNeutronSurfaceHits.end(), neutronSurfaceHits.begin(), neutronSurfaceHits.end());
+  }
+  if (gTotalPlateNiel.size() < plateNiel.size()) {
+    gTotalPlateNiel.resize(plateNiel.size(), 0.0);
+  }
+  for (size_t i = 0; i < plateNiel.size(); ++i) {
+    gTotalPlateNiel[i] += plateNiel[i];
+  }
+  if (gTotalPlateGasH.size() < plateGasH.size()) {
+    gTotalPlateGasH.resize(plateGasH.size(), 0.0);
+  }
+  for (size_t i = 0; i < plateGasH.size(); ++i) {
+    gTotalPlateGasH[i] += plateGasH[i];
+  }
+  if (gTotalPlateGasHe.size() < plateGasHe.size()) {
+    gTotalPlateGasHe.resize(plateGasHe.size(), 0.0);
+  }
+  for (size_t i = 0; i < plateGasHe.size(); ++i) {
+    gTotalPlateGasHe[i] += plateGasHe[i];
   }
   // TODO: migrate to G4Accumulable/G4AnalysisManager for richer MT-safe reporting.
 }
