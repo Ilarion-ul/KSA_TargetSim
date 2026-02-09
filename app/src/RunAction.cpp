@@ -73,6 +73,51 @@ RunAction::HeatmapBounds DetermineEdepBounds(const AppConfig& config) {
   }
   return {plateBounds.xMinMm, plateBounds.xMaxMm, plateBounds.yMinMm, plateBounds.yMaxMm, zMin, zMax};
 }
+
+std::pair<double, double> DeterminePlateStackZBounds(const AppConfig& config) {
+  if (config.target.type == "U-Mo") {
+    const double totalAssemblyLen = config.geometry.total_assembly_len_mm;
+    const double beamlineVacLen = config.geometry.beamline_vacuum_len_mm;
+    const double targetRegionLen = totalAssemblyLen - beamlineVacLen;
+    const double clearance = config.geometry.target_region_extra_clearance_mm;
+    const double targetStartZ = -0.5 * totalAssemblyLen + beamlineVacLen;
+    const auto& plateTs = config.target.plate_thicknesses_mm;
+    const double cladFront = config.target.clad_thickness_front_mm;
+    const double cladRest = config.target.clad_thickness_rest_mm;
+    const double gapInOut = config.target.gap_inout_mm;
+    const double gapMid = config.target.gap_mid_mm;
+    double stackLen = 0.0;
+    for (size_t i = 0; i < plateTs.size(); ++i) {
+      const double coreT = plateTs[i];
+      const double clad = (i < 4) ? cladFront : cladRest;
+      stackLen += coreT + 2.0 * clad;
+      if (i == 0 || i == plateTs.size() - 1) {
+        stackLen += gapInOut;
+      } else {
+        stackLen += gapMid;
+      }
+    }
+    stackLen += gapInOut;
+    const double stackStartZ = targetStartZ + clearance + config.target.entrance_window_mm;
+    const double stackEndZ = stackStartZ + stackLen;
+    const double minZ = std::max(stackStartZ, targetStartZ);
+    const double maxZ = std::min(stackEndZ, targetStartZ + targetRegionLen);
+    return {minZ, maxZ};
+  }
+  if (config.target.type == "W-Ta" && config.geometry.simpleCylinder) {
+    const auto& wPlateTs = config.target.plate_thicknesses_mm;
+    const double waterGap = config.target.water_gap_mm;
+    const double ta = config.target.clad_ta_mm;
+    const double ti = config.target.buffer_ti_mm;
+    double stackT = 8.0 * waterGap;
+    for (double tmm : wPlateTs) {
+      stackT += tmm + 2.0 * ti + 2.0 * ta;
+    }
+    return {-0.5 * stackT, 0.5 * stackT};
+  }
+  const double totalTargetT = config.target.substrate_thickness_mm + config.target.coating_thickness_mm;
+  return {-0.5 * totalTargetT, 0.5 * totalTargetT};
+}
 } // namespace
 
 RunAction::RunAction(const AppConfig& config)
@@ -387,8 +432,9 @@ void RunAction::EndOfRunAction(const G4Run* run) {
       const double xMax = edepBounds_.xMaxMm;
       const double yMin = edepBounds_.yMinMm;
       const double yMax = edepBounds_.yMaxMm;
-      const double zMin = edepBounds_.zMinMm;
-      const double zMax = edepBounds_.zMaxMm;
+      const auto plateStackBounds = DeterminePlateStackZBounds(config_);
+      const double zMin = plateStackBounds.first;
+      const double zMax = plateStackBounds.second;
       auto* h2_exit_xy_downstream = new TH2D("h2_neutron_exit_xy_downstream", "Neutron exit (downstream)",
                                              kSurfBinsX, xMin, xMax, kSurfBinsY, yMin, yMax);
       auto* h2_exit_xy_upstream =
