@@ -51,23 +51,23 @@ void SteppingAction::UserSteppingAction(const G4Step* step) {
   const auto name = volume->GetName();
   const double edep = step->GetTotalEnergyDeposit();
 
-  if (!IsPlateVolume(name)) {
-    return;
-  }
+  const bool inPlate = IsPlateVolume(name);
 
   const auto* prePoint = step->GetPreStepPoint();
   const auto globalPos = prePoint->GetPosition();
   const auto localPos = prePoint->GetTouchableHandle()->GetHistory()->GetTopTransform().TransformPoint(globalPos);
 
-  if (IsSubstrateVolume(name)) {
-    eventAction_->AddEdepSubstrate(edep);
-  } else if (IsCoatingVolume(name)) {
-    eventAction_->AddEdepCoating(edep);
-  }
   const int plateIndex = PlateIndexFromCopyNo(step->GetPreStepPoint()->GetTouchableHandle()->GetCopyNumber());
-  eventAction_->AddPlateEdep(plateIndex, edep);
-  if (edep > 0.0) {
-    eventAction_->AddEdep3d(globalPos.x() / mm, globalPos.y() / mm, globalPos.z() / mm, edep);
+  if (inPlate) {
+    if (IsSubstrateVolume(name)) {
+      eventAction_->AddEdepSubstrate(edep);
+    } else if (IsCoatingVolume(name)) {
+      eventAction_->AddEdepCoating(edep);
+    }
+    eventAction_->AddPlateEdep(plateIndex, edep);
+    if (edep > 0.0) {
+      eventAction_->AddEdep3d(globalPos.x() / mm, globalPos.y() / mm, globalPos.z() / mm, edep);
+    }
   }
 
   // Minimal particle counting metric:
@@ -80,10 +80,12 @@ void SteppingAction::UserSteppingAction(const G4Step* step) {
   if (particleName == "gamma") {
     eventAction_->CountGamma(track->GetTrackID());
   } else if (particleName == "neutron") {
-    eventAction_->CountNeutron(track->GetTrackID());
     const double stepLen = step->GetStepLength();
-    eventAction_->AddPlateNeutronTrackLen(plateIndex, stepLen);
-    eventAction_->AddPlateNeutronHeatmap(plateIndex, localPos.x() / mm, localPos.y() / mm, stepLen);
+    if (inPlate) {
+      eventAction_->CountNeutron(track->GetTrackID());
+      eventAction_->AddPlateNeutronTrackLen(plateIndex, stepLen);
+      eventAction_->AddPlateNeutronHeatmap(plateIndex, localPos.x() / mm, localPos.y() / mm, stepLen);
+    }
     const auto prePos = prePoint->GetPosition();
     const auto postPos = step->GetPostStepPoint() ? step->GetPostStepPoint()->GetPosition() : prePos;
     const double xMin = eventAction_->TargetXMinMm() * mm;
@@ -110,7 +112,7 @@ void SteppingAction::UserSteppingAction(const G4Step* step) {
       eventAction_->AddNeutronSurfaceHit(EnMeV, postPos.x() / mm, postPos.y() / mm, postPos.z() / mm, cosTheta,
                                          track->GetWeight(), track->GetGlobalTime() / ns, surfaceId);
     }
-    if (step->GetPostStepPoint()) {
+    if (inPlate && step->GetPostStepPoint()) {
       const auto* postVolume = step->GetPostStepPoint()->GetTouchableHandle()
                                    ? step->GetPostStepPoint()->GetTouchableHandle()->GetVolume()
                                    : nullptr;
