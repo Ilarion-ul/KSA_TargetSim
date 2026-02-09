@@ -31,6 +31,9 @@ constexpr int kPlateHeatmapBinsY = 50;
 constexpr int kEdepBinsX = 40;
 constexpr int kEdepBinsY = 40;
 constexpr int kEdepBinsZ = 80;
+constexpr int kSurfBinsX = 80;
+constexpr int kSurfBinsY = 80;
+constexpr int kSurfBinsZ = 120;
 
 size_t DeterminePlateCount(const AppConfig& config) {
   if (config.target.type == "U-Mo" || (config.target.type == "W-Ta" && config.geometry.simpleCylinder)) {
@@ -379,6 +382,21 @@ void RunAction::EndOfRunAction(const G4Run* run) {
       neutronTree->Branch("time_ns", &time_ns);
       neutronTree->Branch("surface_id", &surface_id);
       neutronTree->Branch("surface_name", &surface_name);
+
+      const double xMin = edepBounds_.xMinMm;
+      const double xMax = edepBounds_.xMaxMm;
+      const double yMin = edepBounds_.yMinMm;
+      const double yMax = edepBounds_.yMaxMm;
+      const double zMin = edepBounds_.zMinMm;
+      const double zMax = edepBounds_.zMaxMm;
+      auto* h2_exit_xy_downstream = new TH2D("h2_neutron_exit_xy_downstream", "Neutron exit (downstream)",
+                                             kSurfBinsX, xMin, xMax, kSurfBinsY, yMin, yMax);
+      auto* h2_exit_xy_upstream =
+          new TH2D("h2_neutron_exit_xy_upstream", "Neutron exit (upstream)", kSurfBinsX, xMin, xMax, kSurfBinsY, yMin, yMax);
+      auto* h2_exit_yz_side_x =
+          new TH2D("h2_neutron_exit_yz_side_x", "Neutron exit (side x)", kSurfBinsY, yMin, yMax, kSurfBinsZ, zMin, zMax);
+      auto* h2_exit_xz_side_y =
+          new TH2D("h2_neutron_exit_xz_side_y", "Neutron exit (side y)", kSurfBinsX, xMin, xMax, kSurfBinsZ, zMin, zMax);
       for (const auto& hit : neutronSurfaceHits) {
         event_id = hit.event_id;
         En_MeV = hit.En_MeV;
@@ -406,9 +424,22 @@ void RunAction::EndOfRunAction(const G4Run* run) {
             surface_name = "unknown";
             break;
         }
+        if (surface_id == 0) {
+          h2_exit_xy_downstream->Fill(x_mm, y_mm, weight);
+        } else if (surface_id == 1) {
+          h2_exit_xy_upstream->Fill(x_mm, y_mm, weight);
+        } else if (surface_id == 2) {
+          h2_exit_yz_side_x->Fill(y_mm, z_mm, weight);
+        } else if (surface_id == 3) {
+          h2_exit_xz_side_y->Fill(x_mm, z_mm, weight);
+        }
         neutronTree->Fill();
       }
       neutronTree->Write();
+      h2_exit_xy_downstream->Write();
+      h2_exit_xy_upstream->Write();
+      h2_exit_yz_side_x->Write();
+      h2_exit_xz_side_y->Write();
     }
     runTree_->Write();
     rootFile_->Close();
