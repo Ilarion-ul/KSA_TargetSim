@@ -397,6 +397,11 @@ void RunAction::EndOfRunAction(const G4Run* run) {
           new TH2D("h2_neutron_exit_yz_side_x", "Neutron exit (side x)", kSurfBinsY, yMin, yMax, kSurfBinsZ, zMin, zMax);
       auto* h2_exit_xz_side_y =
           new TH2D("h2_neutron_exit_xz_side_y", "Neutron exit (side y)", kSurfBinsX, xMin, xMax, kSurfBinsZ, zMin, zMax);
+      const double xRange = xMax - xMin;
+      const double yRange = yMax - yMin;
+      const double sMax = 2.0 * yRange + 2.0 * xRange;
+      auto* h2_exit_side_surface =
+          new TH2D("h2_neutron_exit_side_surface", "Neutron exit (side surfaces)", kSurfBinsX, 0.0, sMax, kSurfBinsZ, zMin, zMax);
       for (const auto& hit : neutronSurfaceHits) {
         event_id = hit.event_id;
         En_MeV = hit.En_MeV;
@@ -430,8 +435,24 @@ void RunAction::EndOfRunAction(const G4Run* run) {
           h2_exit_xy_upstream->Fill(x_mm, y_mm, weight);
         } else if (surface_id == 2) {
           h2_exit_yz_side_x->Fill(y_mm, z_mm, weight);
+          const double xMid = 0.5 * (xMin + xMax);
+          double sCoord = 0.0;
+          if (x_mm < xMid) {
+            sCoord = y_mm - yMin;
+          } else {
+            sCoord = yRange + (yMax - y_mm);
+          }
+          h2_exit_side_surface->Fill(sCoord, z_mm, weight);
         } else if (surface_id == 3) {
           h2_exit_xz_side_y->Fill(x_mm, z_mm, weight);
+          const double yMid = 0.5 * (yMin + yMax);
+          double sCoord = 2.0 * yRange;
+          if (y_mm < yMid) {
+            sCoord += x_mm - xMin;
+          } else {
+            sCoord += xRange + (xMax - x_mm);
+          }
+          h2_exit_side_surface->Fill(sCoord, z_mm, weight);
         }
         neutronTree->Fill();
       }
@@ -440,6 +461,7 @@ void RunAction::EndOfRunAction(const G4Run* run) {
       h2_exit_xy_upstream->Write();
       h2_exit_yz_side_x->Write();
       h2_exit_xz_side_y->Write();
+      h2_exit_side_surface->Write();
     }
     runTree_->Write();
     rootFile_->Close();
