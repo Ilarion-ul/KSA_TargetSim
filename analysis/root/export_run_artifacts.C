@@ -55,24 +55,26 @@ std::string TimestampFromFile(TFile* file, const std::string& path) {
 std::string ReadTargetType(TFile* file) {
   auto* tree = dynamic_cast<TTree*>(file->Get("RunMeta"));
   if (!tree) return "unknown";
-  std::string target_type;
+  std::string* target_type = nullptr;
+  if (!tree->GetBranch("target_type")) return "unknown";
   tree->SetBranchAddress("target_type", &target_type);
   tree->GetEntry(0);
-  return target_type.empty() ? "unknown" : target_type;
+  const std::string value = target_type ? *target_type : "unknown";
+  return value.empty() ? "unknown" : value;
 }
 
 void WriteRunMetaJson(TFile* file, const std::string& outPath) {
   auto* tree = dynamic_cast<TTree*>(file->Get("RunMeta"));
   if (!tree) return;
-  std::string target_type;
-  std::string geometry_json;
+  std::string* target_type = nullptr;
+  std::string* geometry_json = nullptr;
   double beam_energy_MeV = 0.0;
   double beam_energy_sigma_rel = 0.0;
   double beam_sigma_x_mm = 0.0;
   double beam_sigma_y_mm = 0.0;
   double beam_sigma_theta_x_mrad = 0.0;
   double beam_sigma_theta_y_mrad = 0.0;
-  std::string pulse_mode;
+  std::string* pulse_mode = nullptr;
   double pulse_width_us = 0.0;
   double rep_rate_Hz = 0.0;
   double I_pulse_A = 0.0;
@@ -83,6 +85,9 @@ void WriteRunMetaJson(TFile* file, const std::string& outPath) {
   int nThreads = 0;
   double per_primary = 1.0;
   double N_e_per_s = 0.0;
+  if (!tree->GetBranch("target_type") || !tree->GetBranch("geometry_json") || !tree->GetBranch("pulse_mode")) {
+    return;
+  }
   tree->SetBranchAddress("target_type", &target_type);
   tree->SetBranchAddress("geometry_json", &geometry_json);
   tree->SetBranchAddress("beam_energy_MeV", &beam_energy_MeV);
@@ -104,10 +109,14 @@ void WriteRunMetaJson(TFile* file, const std::string& outPath) {
   tree->SetBranchAddress("N_e_per_s", &N_e_per_s);
   tree->GetEntry(0);
 
+  const std::string tt = target_type ? *target_type : "unknown";
+  const std::string gj = geometry_json ? *geometry_json : "{}";
+  const std::string pm = pulse_mode ? *pulse_mode : "unknown";
+
   std::ofstream os(outPath);
   os << "{\n";
-  os << "  \"target_type\": \"" << target_type << "\",\n";
-  os << "  \"geometry\": " << geometry_json << ",\n";
+  os << "  \"target_type\": \"" << tt << "\",\n";
+  os << "  \"geometry\": " << gj << ",\n";
   os << "  \"beam\": {\n";
   os << "    \"energy_MeV\": " << beam_energy_MeV << ",\n";
   os << "    \"energy_sigma_rel\": " << beam_energy_sigma_rel << ",\n";
@@ -117,7 +126,7 @@ void WriteRunMetaJson(TFile* file, const std::string& outPath) {
   os << "    \"sigma_theta_y_mrad\": " << beam_sigma_theta_y_mrad << "\n";
   os << "  },\n";
   os << "  \"pulse\": {\n";
-  os << "    \"mode\": \"" << pulse_mode << "\",\n";
+  os << "    \"mode\": \"" << pm << "\",\n";
   os << "    \"pulse_width_us\": " << pulse_width_us << ",\n";
   os << "    \"rep_rate_Hz\": " << rep_rate_Hz << ",\n";
   os << "    \"I_pulse_A\": " << I_pulse_A << ",\n";
@@ -148,7 +157,7 @@ void WriteNeutronSurfCsv(TFile* file, const std::string& outPath) {
   double weight = 1.0;
   double time_ns = 0.0;
   int surface_id = 0;
-  std::string surface_name;
+  std::string* surface_name = nullptr;
   tree->SetBranchAddress("event_id", &event_id);
   tree->SetBranchAddress("En_MeV", &En_MeV);
   tree->SetBranchAddress("x_mm", &x_mm);
@@ -158,14 +167,16 @@ void WriteNeutronSurfCsv(TFile* file, const std::string& outPath) {
   tree->SetBranchAddress("weight", &weight);
   tree->SetBranchAddress("time_ns", &time_ns);
   tree->SetBranchAddress("surface_id", &surface_id);
-  tree->SetBranchAddress("surface_name", &surface_name);
+  if (tree->GetBranch("surface_name")) {
+    tree->SetBranchAddress("surface_name", &surface_name);
+  }
   std::ofstream os(outPath);
   os << "event_id,En_MeV,x_mm,y_mm,z_mm,cosTheta,weight,time_ns,surface_id,surface_name\n";
   const Long64_t n = tree->GetEntries();
   for (Long64_t i = 0; i < n; ++i) {
     tree->GetEntry(i);
     os << event_id << "," << En_MeV << "," << x_mm << "," << y_mm << "," << z_mm << "," << cosTheta << "," << weight << ","
-       << time_ns << "," << surface_id << "," << surface_name << "\n";
+       << time_ns << "," << surface_id << "," << (surface_name ? *surface_name : "") << "\n";
   }
 }
 } // namespace
