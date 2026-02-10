@@ -1,0 +1,12 @@
+# Batch run macro for KSA_TargetSim.
+# Typical launch:
+#   ksasim -m app/macros/run_batch.mac -c app/config/default_WTa.json
+# nEvents is usually controlled via JSON/CLI (-n), so beamOn here is small by default.
+
+/control/verbose 1
+/run/verbose 1
+/event/verbose 0
+/tracking/verbose 0
+
+/run/initialize
+/run/beamOn 100

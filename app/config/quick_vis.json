@@ -1,0 +1,104 @@
+{
+  "_comment": "Fast visualization profile",
+  "beam": {
+    "energy_MeV": 20.0,
+    "sigmaX_mm": 1.0,
+    "sigmaY_mm": 1.0,
+    "divergence_mrad": 1.0,
+    "position_mm": [
+      0.0,
+      0.0,
+      -70.0
+    ],
+    "direction": [
+      0.0,
+      0.0,
+      1.0
+    ],
+    "defect_mode": "ideal",
+    "offset_mm": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "tilt_mrad": [
+      0.0,
+      0.0
+    ],
+    "halo_fraction": 0.0,
+    "halo_sigma_mm": 3.0,
+    "energy_sigma_rel_1sigma": 0.01,
+    "energy_uniform_rel_halfspan": 0.04,
+    "energy_spread_model": "gauss",
+    "pos_mm": [
+      0.0,
+      0.0,
+      -70.0
+    ],
+    "dir": [
+      0.0,
+      0.0,
+      1.0
+    ],
+    "sigma_x_mm": 1.0,
+    "sigma_y_mm": 1.0,
+    "sigma_theta_x_mrad": 1.0,
+    "sigma_theta_y_mrad": 1.0,
+    "norm_emit_m_rad": 5e-07,
+    "use_emit_model": false,
+    "emit_sigma_theta_from": "eps_over_sigma",
+    "mode": "cw",
+    "pulse_width_us": 2.7,
+    "rep_rate_Hz": 625.0,
+    "I_pulse_A": 0.6,
+    "I_avg_A": 0.001,
+    "beam_power_kW": 100.0,
+    "defect": {
+      "offset_mm": [
+        0.0,
+        0.0
+      ],
+      "tilt_mrad": [
+        0.0,
+        0.0
+      ],
+      "halo_fraction": 0.0,
+      "halo_sigma_scale": 5.0
+    }
+  },
+  "target": {
+    "type": "W-Ta",
+    "plate_xy_mm": 65.8,
+    "plate_thicknesses_mm": [
+      2.5,
+      2.5,
+      2.5,
+      3.5,
+      3.5,
+      5.5,
+      9.5
+    ],
+    "water_gap_mm": 2.0,
+    "clad_ta_mm": 0.25,
+    "buffer_ti_mm": 0.04,
+    "assembly_thickness_mm": 120.0,
+    "temperature_K": 300.0
+  },
+  "run": {
+    "nEvents": 10,
+    "nThreads": 0,
+    "outputRootFile": "quick_vis.root",
+    "outputDir": "results",
+    "enableVis": true,
+    "irradiation_time_s": 1.0
+  },
+  "physics": {
+    "physicsListName": "QGSP_BIC_HPT",
+    "enablePhotonuclear": true,
+    "cut_mm": 0.5
+  },
+  "geometry": {
+    "simpleCylinder": true,
+    "worldMargin_mm": 120.0
+  }
+}
