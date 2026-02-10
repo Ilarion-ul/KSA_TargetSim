@@ -8,6 +8,7 @@
 #include <TSystem.h>
 #include <TTree.h>
 #include <TH1D.h>
+#include <TStyle.h>
 
 #include <algorithm>
 #include <fstream>
@@ -252,6 +253,8 @@ void export_run_artifacts(const char* rootPath, const char* outBase = "results/r
   WriteNeutronSurfCsv(file.get(), outDir + "/neutron_surface.csv");
   ExportNeutronSourceDataAndSpectra(file.get(), outDir);
 
+  gStyle->SetOptStat(0);
+
   TIter next(file->GetListOfKeys());
   while (auto* key = dynamic_cast<TKey*>(next())) {
     TObject* obj = key->ReadObj();
@@ -259,26 +262,43 @@ void export_run_artifacts(const char* rootPath, const char* outBase = "results/r
     if (obj->InheritsFrom("TH3")) {
       auto* h3 = dynamic_cast<TH3*>(obj);
       if (!h3) continue;
-      TCanvas c("c", "c", 1000, 800);
+      TCanvas c("c", "c", 1200, 900);
+      c.SetLeftMargin(0.12);
+      c.SetRightMargin(0.20);
+      c.SetBottomMargin(0.12);
+      c.SetTopMargin(0.08);
       auto* projXY = h3->Project3D("xy");
+      projXY->SetStats(0);
       projXY->Draw("COLZ");
       c.SaveAs((outDir + "/" + std::string(h3->GetName()) + "_xy.png").c_str());
       auto* projXZ = h3->Project3D("xz");
+      projXZ->SetStats(0);
       projXZ->Draw("COLZ");
       c.SaveAs((outDir + "/" + std::string(h3->GetName()) + "_xz.png").c_str());
       auto* projYZ = h3->Project3D("yz");
+      projYZ->SetStats(0);
       projYZ->Draw("COLZ");
       c.SaveAs((outDir + "/" + std::string(h3->GetName()) + "_yz.png").c_str());
     } else if (obj->InheritsFrom("TH2")) {
       auto* h2 = dynamic_cast<TH2*>(obj);
       if (!h2) continue;
-      TCanvas c("c", "c", 1000, 800);
+      TCanvas c("c", "c", 1200, 900);
+      c.SetLeftMargin(0.12);
+      c.SetRightMargin(0.20);
+      c.SetBottomMargin(0.12);
+      c.SetTopMargin(0.08);
+      h2->SetStats(0);
       h2->Draw("COLZ");
       c.SaveAs((outDir + "/" + std::string(h2->GetName()) + ".png").c_str());
     } else if (obj->InheritsFrom("TH1")) {
       auto* h1 = dynamic_cast<TH1*>(obj);
       if (!h1) continue;
-      TCanvas c("c", "c", 1000, 800);
+      TCanvas c("c", "c", 1200, 900);
+      c.SetLeftMargin(0.12);
+      c.SetRightMargin(0.08);
+      c.SetBottomMargin(0.12);
+      c.SetTopMargin(0.08);
+      h1->SetStats(0);
       h1->Draw("HIST");
       c.SaveAs((outDir + "/" + std::string(h1->GetName()) + ".png").c_str());
     }
