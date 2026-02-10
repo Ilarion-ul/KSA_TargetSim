@@ -73,6 +73,17 @@ KSA_TargetSim — Geant4‑симулятор для моделирования 
 - `h1_niel_plate` — NIEL‑proxy per‑plate
 - `h1_gas_h_plate`, `h1_gas_he_plate` — газообразование per‑plate
 
+### Экспорт артефактов из ROOT
+Скрипт выгружает PNG‑изображения всех `TH1/TH2/TH3` и табличные данные из `NeutronSurf`
+в отдельную папку с отметкой времени (взято из времени создания ROOT‑файла, либо
+из mtime файла).
+
+```bash
+scripts/export_root_artifacts.sh results/root/run_WTa.root
+```
+
+Результат: `results/root/png/<timestamp>_<target_type>/...`
+
 ## Структура директорий (кратко)
 - `app/` — приложение `ksasim` (код, include, макросы, JSON‑конфиги)
 - `analysis/root/` — ROOT‑макросы постобработки
