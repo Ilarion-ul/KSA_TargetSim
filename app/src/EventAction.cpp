@@ -80,13 +80,14 @@ void EventAction::BeginOfEventAction(const G4Event* event) {
   std::fill(plateGasH_.begin(), plateGasH_.end(), 0.0);
   std::fill(plateGasHe_.begin(), plateGasHe_.end(), 0.0);
   neutronSurfaceHits_.clear();
+  photonSurfaceHits_.clear();
 }
 
 void EventAction::EndOfEventAction(const G4Event*) {
   if (runAction_) {
     runAction_->AccumulateEvent(edepSubstrate_, edepCoating_, nGamma_, nNeutron_, nNeutronExit_, eventId_, plateEdep_,
-                                plateNeutronTrackLen_, plateNeutronHeatmap_, edep3d_, neutronSurfaceHits_, plateNiel_,
-                                plateGasH_, plateGasHe_);
+                                plateNeutronTrackLen_, plateNeutronHeatmap_, edep3d_, neutronSurfaceHits_,
+                                photonSurfaceHits_, plateNiel_, plateGasH_, plateGasHe_);
   }
 }
 
@@ -154,6 +155,27 @@ void EventAction::AddNeutronSurfaceHit(double EnMeV,
   hit.time_ns = timeNs;
   hit.surface_id = surfaceId;
   neutronSurfaceHits_.push_back(hit);
+}
+
+void EventAction::AddPhotonSurfaceHit(double EMeV,
+                                      double xMm,
+                                      double yMm,
+                                      double zMm,
+                                      double cosTheta,
+                                      double weight,
+                                      double timeNs,
+                                      int surfaceId) {
+  RunAction::PhotonSurfaceHit hit;
+  hit.event_id = eventId_;
+  hit.E_MeV = EMeV;
+  hit.x_mm = xMm;
+  hit.y_mm = yMm;
+  hit.z_mm = zMm;
+  hit.cosTheta = cosTheta;
+  hit.weight = weight;
+  hit.time_ns = timeNs;
+  hit.surface_id = surfaceId;
+  photonSurfaceHits_.push_back(hit);
 }
 
 void EventAction::AddPlateNiel(int plateIndex, double niel) {

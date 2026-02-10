@@ -24,6 +24,18 @@ class RunAction : public G4UserRunAction {
     int surface_id{0};
   };
 
+  struct PhotonSurfaceHit {
+    int event_id{0};
+    double E_MeV{0.0};
+    double x_mm{0.0};
+    double y_mm{0.0};
+    double z_mm{0.0};
+    double cosTheta{0.0};
+    double weight{1.0};
+    double time_ns{0.0};
+    int surface_id{0};
+  };
+
   struct HeatmapBounds {
     double xMinMm;
     double xMaxMm;
@@ -50,6 +62,7 @@ class RunAction : public G4UserRunAction {
                        const std::vector<double>& plateNeutronHeatmap,
                        const std::vector<double>& edep3d,
                        const std::vector<NeutronSurfaceHit>& neutronSurfaceHits,
+                       const std::vector<PhotonSurfaceHit>& photonSurfaceHits,
                        const std::vector<double>& plateNiel,
                        const std::vector<double>& plateGasH,
                        const std::vector<double>& plateGasHe);

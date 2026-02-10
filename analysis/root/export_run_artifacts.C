@@ -223,6 +223,124 @@ void WriteNeutronSurfCsv(TFile* file, const std::string& outPath) {
   }
 }
 
+
+
+double ReadPrimaryElectronCount(TFile* file) {
+  auto* tree = dynamic_cast<TTree*>(file->Get("RunMeta"));
+  if (!tree) return 0.0;
+  PrepareTreeForSafeRead(tree);
+  EnableBranches(tree, {"nEvents"});
+  int nEvents = 0;
+  if (!tree->GetBranch("nEvents")) return 0.0;
+  tree->SetBranchAddress("nEvents", &nEvents);
+  if (!SafeGetEntry(tree, 0, "RunMeta(nEvents)")) return 0.0;
+  return static_cast<double>(nEvents);
+}
+
+void ExportPhotonSourceDataAndSpectra(TFile* file, const std::string& outDir) {
+  auto* tree = dynamic_cast<TTree*>(file->Get("PhotonSurf"));
+  if (!tree) return;
+  PrepareTreeForSafeRead(tree);
+  EnableBranches(tree, {"event_id", "E_MeV", "x_mm", "y_mm", "z_mm", "cosTheta", "weight", "time_ns", "surface_id"});
+
+  int event_id = 0;
+  double E_MeV = 0.0;
+  double x_mm = 0.0;
+  double y_mm = 0.0;
+  double z_mm = 0.0;
+  double cosTheta = 0.0;
+  double weight = 1.0;
+  double time_ns = 0.0;
+  int surface_id = 0;
+  tree->SetBranchAddress("event_id", &event_id);
+  tree->SetBranchAddress("E_MeV", &E_MeV);
+  tree->SetBranchAddress("x_mm", &x_mm);
+  tree->SetBranchAddress("y_mm", &y_mm);
+  tree->SetBranchAddress("z_mm", &z_mm);
+  tree->SetBranchAddress("cosTheta", &cosTheta);
+  tree->SetBranchAddress("weight", &weight);
+  tree->SetBranchAddress("time_ns", &time_ns);
+  tree->SetBranchAddress("surface_id", &surface_id);
+
+  auto* h_linear = new TH1D("h_photon_source_spectrum_linear", "Photon source spectrum (linear)", 198, 1.0, 100.0);
+  auto* h_log = new TH1D("h_photon_source_spectrum_log", "Photon source spectrum (log)", 198, 1.0, 100.0);
+  h_log->GetXaxis()->SetMoreLogLabels(true);
+
+  std::ofstream os(outDir + "/photon_source.csv");
+  os << "event_id,E_MeV,x_mm,y_mm,z_mm,cosTheta,weight,time_ns,surface_id\n";
+  const Long64_t n = tree->GetEntries();
+  for (Long64_t i = 0; i < n; ++i) {
+    if (!SafeGetEntry(tree, i, "PhotonSurf(source_export)")) break;
+    if (E_MeV >= 1.0 && E_MeV <= 100.0) {
+      h_linear->Fill(E_MeV, weight);
+      h_log->Fill(E_MeV, weight);
+    }
+    os << event_id << "," << E_MeV << "," << x_mm << "," << y_mm << "," << z_mm << "," << cosTheta << "," << weight << ","
+       << time_ns << "," << surface_id << "\n";
+  }
+
+  TCanvas c1("c_ph_lin", "c_ph_lin", 1000, 800);
+  h_linear->GetXaxis()->SetTitle("Photon energy E_{#gamma} (MeV)");
+  h_linear->GetYaxis()->SetTitle("Counts (weighted)");
+  h_linear->Draw("HIST");
+  c1.SaveAs((outDir + "/photon_source_spectrum_linear.png").c_str());
+
+  TCanvas c2("c_ph_log", "c_ph_log", 1000, 800);
+  c2.SetLogx();
+  h_log->GetXaxis()->SetTitle("Photon energy E_{#gamma} (MeV)");
+  h_log->GetYaxis()->SetTitle("Counts (weighted)");
+  h_log->Draw("HIST");
+  c2.SaveAs((outDir + "/photon_source_spectrum_log.png").c_str());
+}
+
+void WriteParticleYieldsPerElectron(TFile* file, const std::string& outPath) {
+  const double nElectrons = ReadPrimaryElectronCount(file);
+  if (nElectrons <= 0.0) return;
+
+  double neutronWeighted = 0.0;
+  double photonWeighted = 0.0;
+  Long64_t neutronEntries = 0;
+  Long64_t photonEntries = 0;
+
+  if (auto* ntree = dynamic_cast<TTree*>(file->Get("NeutronSurf"))) {
+    PrepareTreeForSafeRead(ntree);
+    EnableBranches(ntree, {"weight"});
+    double weight = 1.0;
+    if (ntree->GetBranch("weight")) {
+      ntree->SetBranchAddress("weight", &weight);
+      neutronEntries = ntree->GetEntries();
+      for (Long64_t i = 0; i < neutronEntries; ++i) {
+        if (!SafeGetEntry(ntree, i, "NeutronSurf(yield)")) break;
+        neutronWeighted += weight;
+      }
+    }
+  }
+
+  if (auto* ptree = dynamic_cast<TTree*>(file->Get("PhotonSurf"))) {
+    PrepareTreeForSafeRead(ptree);
+    EnableBranches(ptree, {"weight"});
+    double weight = 1.0;
+    if (ptree->GetBranch("weight")) {
+      ptree->SetBranchAddress("weight", &weight);
+      photonEntries = ptree->GetEntries();
+      for (Long64_t i = 0; i < photonEntries; ++i) {
+        if (!SafeGetEntry(ptree, i, "PhotonSurf(yield)")) break;
+        photonWeighted += weight;
+      }
+    }
+  }
+
+  std::ofstream os(outPath);
+  os << "{\n";
+  os << "  \"n_primary_electrons\": " << nElectrons << ",\n";
+  os << "  \"neutron_entries\": " << neutronEntries << ",\n";
+  os << "  \"photon_entries\": " << photonEntries << ",\n";
+  os << "  \"neutrons_per_electron\": " << (static_cast<double>(neutronEntries) / nElectrons) << ",\n";
+  os << "  \"photons_per_electron\": " << (static_cast<double>(photonEntries) / nElectrons) << ",\n";
+  os << "  \"neutrons_weighted_per_electron\": " << (neutronWeighted / nElectrons) << ",\n";
+  os << "  \"photons_weighted_per_electron\": " << (photonWeighted / nElectrons) << "\n";
+  os << "}\n";
+}
 void ExportNeutronSourceDataAndSpectra(TFile* file, const std::string& outDir) {
   auto* tree = dynamic_cast<TTree*>(file->Get("NeutronSurf"));
   if (!tree) return;
@@ -247,8 +365,8 @@ void ExportNeutronSourceDataAndSpectra(TFile* file, const std::string& outDir) {
   tree->SetBranchAddress("time_ns", &time_ns);
   tree->SetBranchAddress("surface_id", &surface_id);
 
-  auto* h_linear = new TH1D("h_neutron_source_spectrum_linear", "Neutron source spectrum (linear)", 200, 0.0, 100.0);
-  auto* h_log = new TH1D("h_neutron_source_spectrum_log", "Neutron source spectrum (log)", 200, 1e-9, 100.0);
+  auto* h_linear = new TH1D("h_neutron_source_spectrum_linear", "Neutron source spectrum (linear)", 250, 0.0, 5.0);
+  auto* h_log = new TH1D("h_neutron_source_spectrum_log", "Neutron source spectrum (log)", 250, 1e-9, 5.0);
   h_log->GetXaxis()->SetMoreLogLabels(true);
 
   std::ofstream os(outDir + "/neutron_source.csv");
@@ -296,6 +414,8 @@ void export_run_artifacts(const char* rootPath, const char* outBase = "results/r
   WriteRunMetaJson(file.get(), outDir + "/runmeta.json");
   WriteNeutronSurfCsv(file.get(), outDir + "/neutron_surface.csv");
   ExportNeutronSourceDataAndSpectra(file.get(), outDir);
+  ExportPhotonSourceDataAndSpectra(file.get(), outDir);
+  WriteParticleYieldsPerElectron(file.get(), outDir + "/particle_yields_per_electron.json");
 
   gStyle->SetOptStat(0);
 

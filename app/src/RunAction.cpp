@@ -154,6 +154,7 @@ std::vector<double> gTotalPlateNeutronTrackLen;
 std::vector<double> gTotalPlateNeutronHeatmap;
 std::vector<double> gTotalEdep3d;
 std::vector<RunAction::NeutronSurfaceHit> gNeutronSurfaceHits;
+std::vector<RunAction::PhotonSurfaceHit> gPhotonSurfaceHits;
 std::vector<double> gTotalPlateNiel;
 std::vector<double> gTotalPlateGasH;
 std::vector<double> gTotalPlateGasHe;
@@ -176,6 +177,7 @@ void RunAction::BeginOfRunAction(const G4Run*) {
     gTotalEdep3d.assign(static_cast<size_t>(edepBinsX_) * static_cast<size_t>(edepBinsY_) * static_cast<size_t>(edepBinsZ_),
                         0.0);
     gNeutronSurfaceHits.clear();
+    gPhotonSurfaceHits.clear();
     gTotalPlateNiel.assign(plateCount_, 0.0);
     gTotalPlateGasH.assign(plateCount_, 0.0);
     gTotalPlateGasHe.assign(plateCount_, 0.0);
@@ -215,6 +217,7 @@ void RunAction::EndOfRunAction(const G4Run* run) {
   std::vector<double> plateNeutronHeatmap;
   std::vector<double> edep3d;
   std::vector<NeutronSurfaceHit> neutronSurfaceHits;
+  std::vector<PhotonSurfaceHit> photonSurfaceHits;
   std::vector<double> plateNiel;
   std::vector<double> plateGasH;
   std::vector<double> plateGasHe;
@@ -230,6 +233,7 @@ void RunAction::EndOfRunAction(const G4Run* run) {
     plateNeutronHeatmap = gTotalPlateNeutronHeatmap;
     edep3d = gTotalEdep3d;
     neutronSurfaceHits = gNeutronSurfaceHits;
+    photonSurfaceHits = gPhotonSurfaceHits;
     plateNiel = gTotalPlateNiel;
     plateGasH = gTotalPlateGasH;
     plateGasHe = gTotalPlateGasHe;
@@ -573,6 +577,49 @@ void RunAction::EndOfRunAction(const G4Run* run) {
       h2_exit_xz_side_y->Write();
       h2_exit_side_surface->Write();
     }
+    if (!photonSurfaceHits.empty()) {
+      auto* photonTree = new TTree("PhotonSurf", "Photon surface crossings");
+      int event_id = 0;
+      double E_MeV = 0.0;
+      double x_mm = 0.0;
+      double y_mm = 0.0;
+      double z_mm = 0.0;
+      double cosTheta = 0.0;
+      double weight = 1.0;
+      double time_ns = 0.0;
+      int surface_id = 0;
+      std::string surface_name;
+      photonTree->Branch("event_id", &event_id);
+      photonTree->Branch("E_MeV", &E_MeV);
+      photonTree->Branch("x_mm", &x_mm);
+      photonTree->Branch("y_mm", &y_mm);
+      photonTree->Branch("z_mm", &z_mm);
+      photonTree->Branch("cosTheta", &cosTheta);
+      photonTree->Branch("weight", &weight);
+      photonTree->Branch("time_ns", &time_ns);
+      photonTree->Branch("surface_id", &surface_id);
+      photonTree->Branch("surface_name", &surface_name);
+      for (const auto& hit : photonSurfaceHits) {
+        event_id = hit.event_id;
+        E_MeV = hit.E_MeV;
+        x_mm = hit.x_mm;
+        y_mm = hit.y_mm;
+        z_mm = hit.z_mm;
+        cosTheta = hit.cosTheta;
+        weight = hit.weight;
+        time_ns = hit.time_ns;
+        surface_id = hit.surface_id;
+        switch (surface_id) {
+          case 0: surface_name = "downstream"; break;
+          case 1: surface_name = "upstream"; break;
+          case 2: surface_name = "side_x"; break;
+          case 3: surface_name = "side_y"; break;
+          default: surface_name = "unknown"; break;
+        }
+        photonTree->Fill();
+      }
+      photonTree->Write();
+    }
     runTree_->Write();
     rootFile_->Close();
     delete rootFile_;
@@ -685,6 +732,7 @@ void RunAction::AccumulateEvent(double edepSubstrate,
                                 const std::vector<double>& plateNeutronHeatmap,
                                 const std::vector<double>& edep3d,
                                 const std::vector<NeutronSurfaceHit>& neutronSurfaceHits,
+                                const std::vector<PhotonSurfaceHit>& photonSurfaceHits,
                                 const std::vector<double>& plateNiel,
                                 const std::vector<double>& plateGasH,
                                 const std::vector<double>& plateGasHe) {
@@ -721,6 +769,9 @@ void RunAction::AccumulateEvent(double edepSubstrate,
   }
   if (!neutronSurfaceHits.empty()) {
     gNeutronSurfaceHits.insert(gNeutronSurfaceHits.end(), neutronSurfaceHits.begin(), neutronSurfaceHits.end());
+  }
+  if (!photonSurfaceHits.empty()) {
+    gPhotonSurfaceHits.insert(gPhotonSurfaceHits.end(), photonSurfaceHits.begin(), photonSurfaceHits.end());
   }
   if (gTotalPlateNiel.size() < plateNiel.size()) {
     gTotalPlateNiel.resize(plateNiel.size(), 0.0);

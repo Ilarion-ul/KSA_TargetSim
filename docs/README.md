@@ -64,6 +64,7 @@ KSA_TargetSim — Geant4‑симулятор для моделирования 
 - `RunMeta` — метаданные запуска (параметры пучка/геометрии + нормирование).
 - `run_summary` — интегральные метрики.
 - `NeutronSurf` — пересечения нейтронов с поверхностями мишени.
+- `PhotonSurf` — пересечения фотонов с поверхностями мишени.
 - `edep_3d` (TH3D) — 3D карта энерговыделения (по Z ограничена стеком пластин мишени).
 - `h2_edep_xy_mid` (TH2D) — 2D срез по середине Z.
 - `h2_neutron_exit_*` — карты выходов нейтронов:
@@ -85,10 +86,14 @@ scripts/export_root_artifacts.sh results/root/run_WTa.root
 Результат: `results/root/png/<timestamp>_<target_type>/...`
 
 
-Дополнительно для источника нейтронов создаются:
+Дополнительно создаются артефакты по источникам:
 - `neutron_source.csv` — табличные данные (`event_id, En_MeV, x_mm, y_mm, z_mm, cosTheta, weight, time_ns, surface_id`)
-- `neutron_source_spectrum_linear.png` — спектр нейтронов по энергии в линейной шкале
-- `neutron_source_spectrum_log.png` — спектр нейтронов по энергии в логарифмической шкале
+- `neutron_source_spectrum_linear.png` — спектр нейтронов в диапазоне **0–5 MeV** (линейная шкала)
+- `neutron_source_spectrum_log.png` — спектр нейтронов в диапазоне **1e-9–5 MeV** (логарифмическая шкала, для теплового хвоста)
+- `photon_source.csv` — табличные данные (`event_id, E_MeV, x_mm, y_mm, z_mm, cosTheta, weight, time_ns, surface_id`)
+- `photon_source_spectrum_linear.png` — спектр фотонов в диапазоне **1–100 MeV** (линейная шкала)
+- `photon_source_spectrum_log.png` — спектр фотонов в диапазоне **1–100 MeV** (логарифмическая шкала)
+- `particle_yields_per_electron.json` — количества `photons/electron` и `neutrons/electron` (также weighted-вариант)
 
 ## Структура директорий (кратко)
 - `app/` — приложение `ksasim` (код, include, макросы, JSON‑конфиги)

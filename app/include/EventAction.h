@@ -30,6 +30,14 @@ class EventAction : public G4UserEventAction {
                             double weight,
                             double timeNs,
                             int surfaceId);
+  void AddPhotonSurfaceHit(double EMeV,
+                            double xMm,
+                            double yMm,
+                            double zMm,
+                            double cosTheta,
+                            double weight,
+                            double timeNs,
+                            int surfaceId);
   void AddPlateNiel(int plateIndex, double niel);
   void AddPlateGasH(int plateIndex, double count);
   void AddPlateGasHe(int plateIndex, double count);
@@ -82,6 +90,7 @@ class EventAction : public G4UserEventAction {
   std::vector<double> plateGasH_;
   std::vector<double> plateGasHe_;
   std::vector<RunAction::NeutronSurfaceHit> neutronSurfaceHits_;
+  std::vector<RunAction::PhotonSurfaceHit> photonSurfaceHits_;
 
   std::unordered_set<int> gammaTrackIds_;
   std::unordered_set<int> neutronTrackIds_;
