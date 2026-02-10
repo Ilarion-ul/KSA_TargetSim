@@ -18,6 +18,35 @@
 #include <vector>
 
 namespace {
+
+void PrepareTreeForSafeRead(TTree* tree) {
+  if (!tree) return;
+  tree->SetCacheSize(0);
+  tree->SetBranchStatus("*", 0);
+}
+
+void EnableBranches(TTree* tree, const std::vector<std::string>& names) {
+  if (!tree) return;
+  for (const auto& n : names) {
+    if (tree->GetBranch(n.c_str())) {
+      tree->SetBranchStatus(n.c_str(), 1);
+    }
+  }
+}
+
+bool SafeGetEntry(TTree* tree, Long64_t entry, const char* label) {
+  if (!tree) return false;
+  if (entry < 2) {
+    ::Info("export_run_artifacts", "Reading %s entry %lld", label, entry);
+  }
+  const Long64_t bytes = tree->GetEntry(entry);
+  if (bytes < 0) {
+    ::Error("export_run_artifacts", "Failed to read %s entry %lld", label, entry);
+    return false;
+  }
+  return true;
+}
+
 std::string Sanitize(const std::string& value) {
   std::string out = value;
   std::replace(out.begin(), out.end(), ' ', '_');
@@ -57,10 +86,13 @@ std::string TimestampFromFile(TFile* file, const std::string& path) {
 std::string ReadTargetType(TFile* file) {
   auto* tree = dynamic_cast<TTree*>(file->Get("RunMeta"));
   if (!tree) return "unknown";
+  PrepareTreeForSafeRead(tree);
+  EnableBranches(tree, {"target_type"});
   std::string* target_type = nullptr;
   if (!tree->GetBranch("target_type")) return "unknown";
   tree->SetBranchAddress("target_type", &target_type);
-  tree->GetEntry(0);
+  tree->Print();
+  if (!SafeGetEntry(tree, 0, "RunMeta(target_type)")) return "unknown";
   const std::string value = target_type ? *target_type : "unknown";
   return value.empty() ? "unknown" : value;
 }
@@ -68,6 +100,11 @@ std::string ReadTargetType(TFile* file) {
 void WriteRunMetaJson(TFile* file, const std::string& outPath) {
   auto* tree = dynamic_cast<TTree*>(file->Get("RunMeta"));
   if (!tree) return;
+  PrepareTreeForSafeRead(tree);
+  EnableBranches(tree, {"target_type", "geometry_json", "beam_energy_MeV", "beam_energy_sigma_rel", "beam_sigma_x_mm",
+                        "beam_sigma_y_mm", "beam_sigma_theta_x_mrad", "beam_sigma_theta_y_mrad", "pulse_mode",
+                        "pulse_width_us", "rep_rate_Hz", "I_pulse_A", "I_avg_A", "duty", "P_avg_kW", "nEvents",
+                        "nThreads", "per_primary", "N_e_per_s"});
   std::string* target_type = nullptr;
   std::string* geometry_json = nullptr;
   double beam_energy_MeV = 0.0;
@@ -109,7 +146,8 @@ void WriteRunMetaJson(TFile* file, const std::string& outPath) {
   tree->SetBranchAddress("nThreads", &nThreads);
   tree->SetBranchAddress("per_primary", &per_primary);
   tree->SetBranchAddress("N_e_per_s", &N_e_per_s);
-  tree->GetEntry(0);
+  tree->Print();
+  if (!SafeGetEntry(tree, 0, "RunMeta")) return;
 
   const std::string tt = target_type ? *target_type : "unknown";
   const std::string gj = geometry_json ? *geometry_json : "{}";
@@ -150,6 +188,8 @@ void WriteRunMetaJson(TFile* file, const std::string& outPath) {
 void WriteNeutronSurfCsv(TFile* file, const std::string& outPath) {
   auto* tree = dynamic_cast<TTree*>(file->Get("NeutronSurf"));
   if (!tree) return;
+  PrepareTreeForSafeRead(tree);
+  EnableBranches(tree, {"event_id", "En_MeV", "x_mm", "y_mm", "z_mm", "cosTheta", "weight", "time_ns", "surface_id", "surface_name"});
   int event_id = 0;
   double En_MeV = 0.0;
   double x_mm = 0.0;
@@ -174,9 +214,10 @@ void WriteNeutronSurfCsv(TFile* file, const std::string& outPath) {
   }
   std::ofstream os(outPath);
   os << "event_id,En_MeV,x_mm,y_mm,z_mm,cosTheta,weight,time_ns,surface_id,surface_name\n";
+  tree->Print();
   const Long64_t n = tree->GetEntries();
   for (Long64_t i = 0; i < n; ++i) {
-    tree->GetEntry(i);
+    if (!SafeGetEntry(tree, i, "NeutronSurf(csv)")) break;
     os << event_id << "," << En_MeV << "," << x_mm << "," << y_mm << "," << z_mm << "," << cosTheta << "," << weight << ","
        << time_ns << "," << surface_id << "," << (surface_name ? *surface_name : "") << "\n";
   }
@@ -185,6 +226,8 @@ void WriteNeutronSurfCsv(TFile* file, const std::string& outPath) {
 void ExportNeutronSourceDataAndSpectra(TFile* file, const std::string& outDir) {
   auto* tree = dynamic_cast<TTree*>(file->Get("NeutronSurf"));
   if (!tree) return;
+  PrepareTreeForSafeRead(tree);
+  EnableBranches(tree, {"event_id", "En_MeV", "x_mm", "y_mm", "z_mm", "cosTheta", "weight", "time_ns", "surface_id"});
   int event_id = 0;
   double En_MeV = 0.0;
   double x_mm = 0.0;
@@ -210,9 +253,10 @@ void ExportNeutronSourceDataAndSpectra(TFile* file, const std::string& outDir) {
 
   std::ofstream os(outDir + "/neutron_source.csv");
   os << "event_id,En_MeV,x_mm,y_mm,z_mm,cosTheta,weight,time_ns,surface_id\n";
+  tree->Print();
   const Long64_t n = tree->GetEntries();
   for (Long64_t i = 0; i < n; ++i) {
-    tree->GetEntry(i);
+    if (!SafeGetEntry(tree, i, "NeutronSurf(source_export)")) break;
     h_linear->Fill(En_MeV, weight);
     if (En_MeV > 0.0) {
       h_log->Fill(En_MeV, weight);
