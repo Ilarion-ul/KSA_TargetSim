@@ -64,7 +64,7 @@ KSA_TargetSim — Geant4‑симулятор для моделирования 
 - `RunMeta` — метаданные запуска (параметры пучка/геометрии + нормирование).
 - `run_summary` — интегральные метрики.
 - `NeutronSurf` — пересечения нейтронов с поверхностями мишени.
-- `edep_3d` (TH3D) — 3D карта энерговыделения.
+- `edep_3d` (TH3D) — 3D карта энерговыделения (по Z ограничена стеком пластин мишени).
 - `h2_edep_xy_mid` (TH2D) — 2D срез по середине Z.
 - `h2_neutron_exit_*` — карты выходов нейтронов:
   - `h2_neutron_exit_xy_downstream`, `h2_neutron_exit_xy_upstream`
@@ -74,15 +74,21 @@ KSA_TargetSim — Geant4‑симулятор для моделирования 
 - `h1_gas_h_plate`, `h1_gas_he_plate` — газообразование per‑plate
 
 ### Экспорт артефактов из ROOT
-Скрипт выгружает PNG‑изображения всех `TH1/TH2/TH3` и табличные данные из `NeutronSurf`
-в отдельную папку с отметкой времени (взято из времени создания ROOT‑файла, либо
-из mtime файла).
+Скрипт выгружает PNG‑изображения всех `TH1/TH2/TH3`, табличные данные из `NeutronSurf`
+и отдельный экспорт данных источника нейтронов в отдельную папку с отметкой времени
+(взято из времени создания ROOT‑файла, либо из mtime файла).
 
 ```bash
 scripts/export_root_artifacts.sh results/root/run_WTa.root
 ```
 
 Результат: `results/root/png/<timestamp>_<target_type>/...`
+
+
+Дополнительно для источника нейтронов создаются:
+- `neutron_source.csv` — табличные данные (`event_id, En_MeV, x_mm, y_mm, z_mm, cosTheta, weight, time_ns, surface_id`)
+- `neutron_source_spectrum_linear.png` — спектр нейтронов по энергии в линейной шкале
+- `neutron_source_spectrum_log.png` — спектр нейтронов по энергии в логарифмической шкале
 
 ## Структура директорий (кратко)
 - `app/` — приложение `ksasim` (код, include, макросы, JSON‑конфиги)

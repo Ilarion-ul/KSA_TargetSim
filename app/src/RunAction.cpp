@@ -17,6 +17,7 @@
 #include <fstream>
 #include <vector>
 #include <sstream>
+#include <cmath>
 
 #ifdef KSA_USE_ROOT
 #include <TH2D.h>
@@ -404,22 +405,35 @@ void RunAction::EndOfRunAction(const G4Run* run) {
       const double xMax = edepBounds_.xMaxMm;
       const double yMin = edepBounds_.yMinMm;
       const double yMax = edepBounds_.yMaxMm;
-      const double zMin = edepBounds_.zMinMm;
-      const double zMax = edepBounds_.zMaxMm;
+      const auto plateStackBounds = DeterminePlateStackZBounds(config_);
+      const double zMin = plateStackBounds.first;
+      const double zMax = plateStackBounds.second;
+      const double zOrigMin = edepBounds_.zMinMm;
+      const double zOrigMax = edepBounds_.zMaxMm;
+      const double zOrigSpan = zOrigMax - zOrigMin;
+      const double zPlateSpan = zMax - zMin;
       auto* h3 = new TH3D("edep_3d", "Energy deposition 3D", edepBinsX_, xMin, xMax, edepBinsY_, yMin, yMax,
                           edepBinsZ_, zMin, zMax);
       auto* h2_edep_xy_mid = new TH2D("h2_edep_xy_mid", "Energy deposition XY (mid-plane)",
                                       edepBinsX_, xMin, xMax, edepBinsY_, yMin, yMax);
       const int midZ = edepBinsZ_ / 2;
       for (int iz = 0; iz < edepBinsZ_; ++iz) {
+        const double zCenterOrig = zOrigMin + (static_cast<double>(iz) + 0.5) * zOrigSpan / edepBinsZ_;
+        if (zCenterOrig < zMin || zCenterOrig > zMax || zPlateSpan <= 0.0) {
+          continue;
+        }
+        int izPlate = static_cast<int>(std::floor((zCenterOrig - zMin) / zPlateSpan * edepBinsZ_));
+        if (izPlate < 0) izPlate = 0;
+        if (izPlate >= edepBinsZ_) izPlate = edepBinsZ_ - 1;
         for (int iy = 0; iy < edepBinsY_; ++iy) {
           for (int ix = 0; ix < edepBinsX_; ++ix) {
             const size_t idx = (static_cast<size_t>(iz) * static_cast<size_t>(edepBinsY_) + static_cast<size_t>(iy)) *
                                    static_cast<size_t>(edepBinsX_) +
                                static_cast<size_t>(ix);
             if (idx < edep3dMeV.size()) {
-              h3->SetBinContent(ix + 1, iy + 1, iz + 1, edep3dMeV[idx]);
-              if (iz == midZ) {
+              const double old = h3->GetBinContent(ix + 1, iy + 1, izPlate + 1);
+              h3->SetBinContent(ix + 1, iy + 1, izPlate + 1, old + edep3dMeV[idx]);
+              if (izPlate == midZ) {
                 h2_edep_xy_mid->SetBinContent(ix + 1, iy + 1, edep3dMeV[idx]);
               }
             }

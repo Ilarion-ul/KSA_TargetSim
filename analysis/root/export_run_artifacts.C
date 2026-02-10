@@ -7,6 +7,7 @@
 #include <TROOT.h>
 #include <TSystem.h>
 #include <TTree.h>
+#include <TH1D.h>
 
 #include <algorithm>
 #include <fstream>
@@ -179,6 +180,59 @@ void WriteNeutronSurfCsv(TFile* file, const std::string& outPath) {
        << time_ns << "," << surface_id << "," << (surface_name ? *surface_name : "") << "\n";
   }
 }
+
+void ExportNeutronSourceDataAndSpectra(TFile* file, const std::string& outDir) {
+  auto* tree = dynamic_cast<TTree*>(file->Get("NeutronSurf"));
+  if (!tree) return;
+  int event_id = 0;
+  double En_MeV = 0.0;
+  double x_mm = 0.0;
+  double y_mm = 0.0;
+  double z_mm = 0.0;
+  double cosTheta = 0.0;
+  double weight = 1.0;
+  double time_ns = 0.0;
+  int surface_id = 0;
+  tree->SetBranchAddress("event_id", &event_id);
+  tree->SetBranchAddress("En_MeV", &En_MeV);
+  tree->SetBranchAddress("x_mm", &x_mm);
+  tree->SetBranchAddress("y_mm", &y_mm);
+  tree->SetBranchAddress("z_mm", &z_mm);
+  tree->SetBranchAddress("cosTheta", &cosTheta);
+  tree->SetBranchAddress("weight", &weight);
+  tree->SetBranchAddress("time_ns", &time_ns);
+  tree->SetBranchAddress("surface_id", &surface_id);
+
+  auto* h_linear = new TH1D("h_neutron_source_spectrum_linear", "Neutron source spectrum (linear)", 200, 0.0, 100.0);
+  auto* h_log = new TH1D("h_neutron_source_spectrum_log", "Neutron source spectrum (log)", 200, 1e-9, 100.0);
+  h_log->GetXaxis()->SetMoreLogLabels(true);
+
+  std::ofstream os(outDir + "/neutron_source.csv");
+  os << "event_id,En_MeV,x_mm,y_mm,z_mm,cosTheta,weight,time_ns,surface_id\n";
+  const Long64_t n = tree->GetEntries();
+  for (Long64_t i = 0; i < n; ++i) {
+    tree->GetEntry(i);
+    h_linear->Fill(En_MeV, weight);
+    if (En_MeV > 0.0) {
+      h_log->Fill(En_MeV, weight);
+    }
+    os << event_id << "," << En_MeV << "," << x_mm << "," << y_mm << "," << z_mm << "," << cosTheta << "," << weight << ","
+       << time_ns << "," << surface_id << "\n";
+  }
+
+  TCanvas c1("c1", "c1", 1000, 800);
+  h_linear->GetXaxis()->SetTitle("Neutron energy En (MeV)");
+  h_linear->GetYaxis()->SetTitle("Counts (weighted)");
+  h_linear->Draw("HIST");
+  c1.SaveAs((outDir + "/neutron_source_spectrum_linear.png").c_str());
+
+  TCanvas c2("c2", "c2", 1000, 800);
+  c2.SetLogx();
+  h_log->GetXaxis()->SetTitle("Neutron energy En (MeV)");
+  h_log->GetYaxis()->SetTitle("Counts (weighted)");
+  h_log->Draw("HIST");
+  c2.SaveAs((outDir + "/neutron_source_spectrum_log.png").c_str());
+}
 } // namespace
 
 void export_run_artifacts(const char* rootPath, const char* outBase = "results/root/png") {
@@ -196,6 +250,7 @@ void export_run_artifacts(const char* rootPath, const char* outBase = "results/r
 
   WriteRunMetaJson(file.get(), outDir + "/runmeta.json");
   WriteNeutronSurfCsv(file.get(), outDir + "/neutron_surface.csv");
+  ExportNeutronSourceDataAndSpectra(file.get(), outDir);
 
   TIter next(file->GetListOfKeys());
   while (auto* key = dynamic_cast<TKey*>(next())) {
