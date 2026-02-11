@@ -153,6 +153,7 @@ void WriteRunMetaJson(TFile* file, const std::string& outPath) {
   const std::string gj = geometry_json ? *geometry_json : "{}";
   const std::string pm = pulse_mode ? *pulse_mode : "unknown";
 
+
   std::ofstream os(outPath);
   os << "{\n";
   os << "  \"target_type\": \"" << tt << "\",\n";
@@ -212,6 +213,7 @@ void WriteNeutronSurfCsv(TFile* file, const std::string& outPath) {
   if (tree->GetBranch("surface_name")) {
     tree->SetBranchAddress("surface_name", &surface_name);
   }
+
   std::ofstream os(outPath);
   os << "event_id,En_MeV,x_mm,y_mm,z_mm,cosTheta,weight,time_ns,surface_id,surface_name\n";
   tree->Print();
@@ -262,8 +264,8 @@ void ExportPhotonSourceDataAndSpectra(TFile* file, const std::string& outDir) {
   tree->SetBranchAddress("time_ns", &time_ns);
   tree->SetBranchAddress("surface_id", &surface_id);
 
-  auto* h_linear = new TH1D("h_photon_source_spectrum_linear", "Photon source spectrum (linear)", 198, 1.0, 100.0);
-  auto* h_log = new TH1D("h_photon_source_spectrum_log", "Photon source spectrum (log)", 198, 1.0, 100.0);
+  auto* h_linear = new TH1D("h_photon_source_spectrum_linear", "Photon source spectrum (linear)", 200, 0.0, 100.0);
+  auto* h_log = new TH1D("h_photon_source_spectrum_log", "Photon source spectrum (log)", 200, 1e-6, 100.0);
   h_log->GetXaxis()->SetMoreLogLabels(true);
 
   std::ofstream os(outDir + "/photon_source.csv");
@@ -271,9 +273,11 @@ void ExportPhotonSourceDataAndSpectra(TFile* file, const std::string& outDir) {
   const Long64_t n = tree->GetEntries();
   for (Long64_t i = 0; i < n; ++i) {
     if (!SafeGetEntry(tree, i, "PhotonSurf(source_export)")) break;
-    if (E_MeV >= 1.0 && E_MeV <= 100.0) {
+    if (E_MeV >= 0.0 && E_MeV <= 100.0) {
       h_linear->Fill(E_MeV, weight);
-      h_log->Fill(E_MeV, weight);
+      if (E_MeV > 0.0) {
+        h_log->Fill(E_MeV, weight);
+      }
     }
     os << event_id << "," << E_MeV << "," << x_mm << "," << y_mm << "," << z_mm << "," << cosTheta << "," << weight << ","
        << time_ns << "," << surface_id << "\n";
@@ -301,6 +305,8 @@ void WriteParticleYieldsPerElectron(TFile* file, const std::string& outPath) {
   double photonWeighted = 0.0;
   Long64_t neutronEntries = 0;
   Long64_t photonEntries = 0;
+  long long nNeutronSummary = -1;
+  long long nGammaAbove5MeVSummary = -1;
 
   if (auto* ntree = dynamic_cast<TTree*>(file->Get("NeutronSurf"))) {
     PrepareTreeForSafeRead(ntree);
@@ -330,6 +336,25 @@ void WriteParticleYieldsPerElectron(TFile* file, const std::string& outPath) {
     }
   }
 
+
+  if (auto* sumTree = dynamic_cast<TTree*>(file->Get("run_summary"))) {
+    PrepareTreeForSafeRead(sumTree);
+    EnableBranches(sumTree, {"nNeutron", "nGammaAbove5MeV"});
+    long long nNeutron = 0;
+    long long nGammaAbove5MeV = 0;
+    if (sumTree->GetBranch("nNeutron")) {
+      sumTree->SetBranchAddress("nNeutron", &nNeutron);
+    }
+    if (sumTree->GetBranch("nGammaAbove5MeV")) {
+      sumTree->SetBranchAddress("nGammaAbove5MeV", &nGammaAbove5MeV);
+    }
+    if (SafeGetEntry(sumTree, 0, "run_summary(yield)")) {
+      nNeutronSummary = nNeutron;
+      nGammaAbove5MeVSummary = nGammaAbove5MeV;
+    }
+  }
+
+
   std::ofstream os(outPath);
   os << "{\n";
   os << "  \"n_primary_electrons\": " << nElectrons << ",\n";
@@ -337,6 +362,12 @@ void WriteParticleYieldsPerElectron(TFile* file, const std::string& outPath) {
   os << "  \"photon_entries\": " << photonEntries << ",\n";
   os << "  \"neutrons_per_electron\": " << (static_cast<double>(neutronEntries) / nElectrons) << ",\n";
   os << "  \"photons_per_electron\": " << (static_cast<double>(photonEntries) / nElectrons) << ",\n";
+  if (nNeutronSummary >= 0) {
+    os << "  \"neutrons_per_electron_from_run_summary\": " << (static_cast<double>(nNeutronSummary) / nElectrons) << ",\n";
+  }
+  if (nGammaAbove5MeVSummary >= 0) {
+    os << "  \"photons_above5MeV_per_electron_from_run_summary\": " << (static_cast<double>(nGammaAbove5MeVSummary) / nElectrons) << ",\n";
+  }
   os << "  \"neutrons_weighted_per_electron\": " << (neutronWeighted / nElectrons) << ",\n";
   os << "  \"photons_weighted_per_electron\": " << (photonWeighted / nElectrons) << "\n";
   os << "}\n";

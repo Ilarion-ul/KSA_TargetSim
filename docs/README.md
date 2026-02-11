@@ -92,9 +92,9 @@ scripts/export_root_artifacts.sh results/root/run_WTa.root
 - `neutron_source_spectrum_linear.png` — спектр нейтронов в диапазоне **0–5 MeV** (линейная шкала)
 - `neutron_source_spectrum_log.png` — спектр нейтронов в диапазоне **2.5e-9–5 MeV** (0.0025 eV нижняя граница) (логарифмическая шкала, для теплового хвоста)
 - `photon_source.csv` — табличные данные (`event_id, E_MeV, x_mm, y_mm, z_mm, cosTheta, weight, time_ns, surface_id`)
-- `photon_source_spectrum_linear.png` — спектр фотонов в диапазоне **1–100 MeV** (линейная шкала)
-- `photon_source_spectrum_log.png` — спектр фотонов в диапазоне **1–100 MeV** (логарифмическая шкала)
-- `particle_yields_per_electron.json` — количества `photons/electron` и `neutrons/electron` (также weighted-вариант)
+- `photon_source_spectrum_linear.png` — спектр фотонов в диапазоне **0–100 MeV** (линейная шкала)
+- `photon_source_spectrum_log.png` — спектр фотонов в диапазоне **~0–100 MeV** (логарифмическая шкала, с ненулевым минимумом по оси X)
+- `particle_yields_per_electron.json` — количества `photons/electron` и `neutrons/electron` (также weighted-вариант); добавлены поля `*_from_run_summary` для сверки с интегральной статистикой run_summary
 
 ## Структура директорий (кратко)
 - `app/` — приложение `ksasim` (код, include, макросы, JSON‑конфиги)
@@ -190,6 +190,8 @@ build/bin/ksasim --vis -c app/config/quick_vis.json
 пока не подключён отдельный transport-consistent scorer для displacement damage / DPA.
 `flux_n_g*` и `h/he` в этой версии экспортируются как interface placeholders (нулевые значения),
 чтобы стабилизировать downstream schema и миграцию postprocessing-кода.
+
+Для метаданных групп нейтронов сохраняются две сетки: логарифмическая и линейная (`neutron_energy_group_edges_MeV` и `neutron_energy_group_edges_linear_MeV`).
 
 При `enableSwellingOutput=false` mesh-интерфейс (`run_meta.json`/`mesh_definition.json`/`mesh_data.csv` и ROOT `MeshData`) не формируется.
 

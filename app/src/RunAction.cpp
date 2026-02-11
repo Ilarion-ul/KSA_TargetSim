@@ -174,6 +174,19 @@ std::vector<double> BuildNeutronEnergyGroupEdgesMeV() {
   return edges;
 }
 
+
+std::vector<double> BuildNeutronEnergyGroupEdgesLinearMeV() {
+  std::vector<double> edges;
+  edges.reserve(kNeutronFluxGroups + 1);
+  const double eMin = 2.5e-9; // 0.0025 eV
+  const double eMax = 5.0;
+  for (int i = 0; i <= kNeutronFluxGroups; ++i) {
+    const double t = static_cast<double>(i) / static_cast<double>(kNeutronFluxGroups);
+    edges.push_back(eMin + t * (eMax - eMin));
+  }
+  return edges;
+}
+
 VoxelLabel BuildLabel(MaterialId m, LayerId l, int volumeId, const std::string& volumeName) {
   VoxelLabel out;
   out.material_id = static_cast<int>(m);
@@ -511,6 +524,7 @@ void RunAction::EndOfRunAction(const G4Run* run) {
   const double electronsPerSecond = beamCurrentA / kElementaryChargeC;
   const double electronsTotal = electronsPerSecond * irradiationTimeS;
   const auto neutronGroupEdgesMeV = BuildNeutronEnergyGroupEdgesMeV();
+  const auto neutronGroupEdgesLinearMeV = BuildNeutronEnergyGroupEdgesLinearMeV();
   std::vector<MeshVoxelRow> meshRows;
   if (config_.run.enableSwellingOutput) {
     meshRows = BuildMeshRows(config_, edepBounds_, edepBinsX_, edepBinsY_, edepBinsZ_, nEventsForNorm, edep3dMeV);
@@ -641,6 +655,14 @@ void RunAction::EndOfRunAction(const G4Run* run) {
       }
       binsOs << "]";
       std::string neutron_energy_group_edges_MeV = binsOs.str();
+      std::ostringstream binsLinearOs;
+      binsLinearOs << "[";
+      for (size_t i = 0; i < neutronGroupEdgesLinearMeV.size(); ++i) {
+        binsLinearOs << neutronGroupEdgesLinearMeV[i];
+        if (i + 1 < neutronGroupEdgesLinearMeV.size()) binsLinearOs << ",";
+      }
+      binsLinearOs << "]";
+      std::string neutron_energy_group_edges_linear_MeV = binsLinearOs.str();
       std::string damage_source_status = "derived_from=damage_proxy";
       metaTree->Branch("nThreads", &nThreads);
       metaTree->Branch("per_primary", &per_primary);
@@ -651,6 +673,7 @@ void RunAction::EndOfRunAction(const G4Run* run) {
       metaTree->Branch("electrons_total", &electrons_total);
       metaTree->Branch("units_json", &units_json);
       metaTree->Branch("neutron_energy_group_edges_MeV", &neutron_energy_group_edges_MeV);
+      metaTree->Branch("neutron_energy_group_edges_linear_MeV", &neutron_energy_group_edges_linear_MeV);
       metaTree->Branch("damage_source_status", &damage_source_status);
       metaTree->Fill();
       metaTree->Write();
@@ -1045,6 +1068,12 @@ void RunAction::EndOfRunAction(const G4Run* run) {
     for (size_t i = 0; i < neutronGroupEdgesMeV.size(); ++i) {
       runMetaOs << neutronGroupEdgesMeV[i];
       if (i + 1 < neutronGroupEdgesMeV.size()) runMetaOs << ", ";
+    }
+    runMetaOs << "],\n";
+    runMetaOs << "  \"neutron_energy_group_edges_linear_MeV\": [";
+    for (size_t i = 0; i < neutronGroupEdgesLinearMeV.size(); ++i) {
+      runMetaOs << neutronGroupEdgesLinearMeV[i];
+      if (i + 1 < neutronGroupEdgesLinearMeV.size()) runMetaOs << ", ";
     }
     runMetaOs << "]\n";
     runMetaOs << "}\n";
