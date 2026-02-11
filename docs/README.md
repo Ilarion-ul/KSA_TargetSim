@@ -125,9 +125,9 @@ scripts/export_root_artifacts.sh results/root/run_WTa.root
 - `neutron_source.csv` — табличные данные (`event_id, En_MeV, x_mm, y_mm, z_mm, cosTheta, weight, time_ns, surface_id`)
 - `neutron_source_spectrum_linear.png` — спектр нейтронов в диапазоне **0–5 MeV** (линейная шкала)
 - `neutron_source_spectrum_log.png` — спектр нейтронов в диапазоне **2.5e-9–5 MeV** (0.0025 eV нижняя граница) (логарифмическая шкала, для теплового хвоста)
-- `photon_source.csv` — табличные данные (`event_id, E_MeV, x_mm, y_mm, z_mm, cosTheta, weight, time_ns, surface_id`)
 - `photon_source_spectrum_linear.png` — спектр фотонов в диапазоне **0–100 MeV** (линейная шкала)
 - `photon_source_spectrum_log.png` — спектр фотонов в диапазоне **~0–100 MeV** (логарифмическая шкала, с ненулевым минимумом по оси X)
+- `photon_source_spectrum_4p5_30.png` — фокусний спектр фотонів у вікні **4.5–30 MeV**
 - `particle_yields_per_electron.json` — количества `photons/electron` и `neutrons/electron` (также weighted-вариант); добавлены поля `*_from_run_summary` для сверки с интегральной статистикой run_summary, включая `neutrons_model_exit_per_electron_from_run_summary`
 
 ## Структура директорий (кратко)
@@ -237,3 +237,13 @@ build/bin/ksasim --vis -c app/config/quick_vis.json
 
 
 Примечание: `nGamma` в `run_summary` и ROOT summary считается как число фотонов с энергией > 5 MeV (порог для фотоядерной релевантности).
+
+
+### Як отримати mesh-дані для розрахунку розбухання
+1. У конфігу запуску встановіть `run.enableSwellingOutput = true`.
+2. Запустіть розрахунок (`ksasim -m app/macros/run_batch.mac -c <config.json>`).
+3. Після завершення перевірте файли в `results/.../logs/`:
+   - `run_meta.json`
+   - `mesh_definition.json`
+   - `mesh_data.csv`
+4. Якщо зібрано з ROOT (`KSA_USE_ROOT=ON`), додатково буде `MeshData` у `results/.../root/*.root`.

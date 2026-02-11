@@ -47,6 +47,18 @@ bool SafeGetEntry(TTree* tree, Long64_t entry, const char* label) {
   return true;
 }
 
+bool ReadNumericRunSummaryValue(TTree* tree, const char* branchName, long long& outValue) {
+  if (!tree || !branchName || !tree->GetBranch(branchName)) {
+    return false;
+  }
+  const Long64_t n = tree->Draw(branchName, "", "goff", 1, 0);
+  if (n <= 0 || !tree->GetV1()) {
+    return false;
+  }
+  outValue = static_cast<long long>(tree->GetV1()[0]);
+  return true;
+}
+
 std::string Sanitize(const std::string& value) {
   std::string out = value;
   std::replace(out.begin(), out.end(), ' ', '_');
@@ -266,21 +278,22 @@ void ExportPhotonSourceDataAndSpectra(TFile* file, const std::string& outDir) {
 
   auto* h_linear = new TH1D("h_photon_source_spectrum_linear", "Photon source spectrum (linear)", 200, 0.0, 100.0);
   auto* h_log = new TH1D("h_photon_source_spectrum_log", "Photon source spectrum (log)", 200, 1e-6, 100.0);
+  auto* h_focus = new TH1D("h_photon_source_spectrum_4p5_30", "Photon source spectrum (4.5-30 MeV)", 255, 4.5, 30.0);
   h_log->GetXaxis()->SetMoreLogLabels(true);
 
-  std::ofstream os(outDir + "/photon_source.csv");
-  os << "event_id,E_MeV,x_mm,y_mm,z_mm,cosTheta,weight,time_ns,surface_id\n";
+  tree->Print();
   const Long64_t n = tree->GetEntries();
   for (Long64_t i = 0; i < n; ++i) {
     if (!SafeGetEntry(tree, i, "PhotonSurf(source_export)")) break;
-    if (E_MeV >= 0.0 && E_MeV <= 100.0) {
+    if (E_MeV >= 0.0) {
       h_linear->Fill(E_MeV, weight);
-      if (E_MeV > 0.0) {
-        h_log->Fill(E_MeV, weight);
-      }
     }
-    os << event_id << "," << E_MeV << "," << x_mm << "," << y_mm << "," << z_mm << "," << cosTheta << "," << weight << ","
-       << time_ns << "," << surface_id << "\n";
+    if (E_MeV > 0.0) {
+      h_log->Fill(E_MeV, weight);
+    }
+    if (E_MeV >= 4.5 && E_MeV <= 30.0) {
+      h_focus->Fill(E_MeV, weight);
+    }
   }
 
   TCanvas c1("c_ph_lin", "c_ph_lin", 1000, 800);
@@ -295,6 +308,12 @@ void ExportPhotonSourceDataAndSpectra(TFile* file, const std::string& outDir) {
   h_log->GetYaxis()->SetTitle("Counts (weighted)");
   h_log->Draw("HIST");
   c2.SaveAs((outDir + "/photon_source_spectrum_log.png").c_str());
+
+  TCanvas c3("c_ph_focus", "c_ph_focus", 1000, 800);
+  h_focus->GetXaxis()->SetTitle("Photon energy E_{#gamma} (MeV)");
+  h_focus->GetYaxis()->SetTitle("Counts (weighted)");
+  h_focus->Draw("HIST");
+  c3.SaveAs((outDir + "/photon_source_spectrum_4p5_30.png").c_str());
 }
 
 void WriteParticleYieldsPerElectron(TFile* file, const std::string& outPath) {
@@ -341,25 +360,10 @@ void WriteParticleYieldsPerElectron(TFile* file, const std::string& outPath) {
   if (auto* sumTree = dynamic_cast<TTree*>(file->Get("run_summary"))) {
     PrepareTreeForSafeRead(sumTree);
     EnableBranches(sumTree, {"nNeutron", "nGammaAbove5MeV", "nNeutronModelExit"});
-    int nNeutron = 0;
-    int nGammaAbove5MeV = 0;
-    int nNeutronModelExit = 0;
-    if (sumTree->GetBranch("nNeutron")) {
-      sumTree->SetBranchAddress("nNeutron", &nNeutron);
-    }
-    if (sumTree->GetBranch("nGammaAbove5MeV")) {
-      sumTree->SetBranchAddress("nGammaAbove5MeV", &nGammaAbove5MeV);
-    }
-    if (sumTree->GetBranch("nNeutronModelExit")) {
-      sumTree->SetBranchAddress("nNeutronModelExit", &nNeutronModelExit);
-    }
-    if (SafeGetEntry(sumTree, 0, "run_summary(yield)")) {
-      nNeutronSummary = static_cast<long long>(nNeutron);
-      nGammaAbove5MeVSummary = static_cast<long long>(nGammaAbove5MeV);
-      nNeutronModelExitSummary = static_cast<long long>(nNeutronModelExit);
-    }
+    ReadNumericRunSummaryValue(sumTree, "nNeutron", nNeutronSummary);
+    ReadNumericRunSummaryValue(sumTree, "nGammaAbove5MeV", nGammaAbove5MeVSummary);
+    ReadNumericRunSummaryValue(sumTree, "nNeutronModelExit", nNeutronModelExitSummary);
   }
-
 
   std::ofstream os(outPath);
   os << "{\n";
