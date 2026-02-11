@@ -366,7 +366,7 @@ void ExportNeutronSourceDataAndSpectra(TFile* file, const std::string& outDir) {
   tree->SetBranchAddress("surface_id", &surface_id);
 
   auto* h_linear = new TH1D("h_neutron_source_spectrum_linear", "Neutron source spectrum (linear)", 250, 0.0, 5.0);
-  auto* h_log = new TH1D("h_neutron_source_spectrum_log", "Neutron source spectrum (log)", 250, 1e-9, 5.0);
+  auto* h_log = new TH1D("h_neutron_source_spectrum_log", "Neutron source spectrum (log)", 250, 2.5e-9, 5.0);
   h_log->GetXaxis()->SetMoreLogLabels(true);
 
   std::ofstream os(outDir + "/neutron_source.csv");

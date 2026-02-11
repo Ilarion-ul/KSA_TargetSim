@@ -47,7 +47,7 @@ class EventAction : public G4UserEventAction {
   double TargetYMaxMm() const { return targetYMaxMm_; }
   double TargetZMinMm() const { return targetZMinMm_; }
   double TargetZMaxMm() const { return targetZMaxMm_; }
-  void CountGamma(int trackId);
+  void CountGamma(int trackId, double kineticEnergyMeV);
   void CountNeutron(int trackId);
   void CountNeutronExit(int trackId);
 

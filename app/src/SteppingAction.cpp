@@ -91,7 +91,7 @@ void SteppingAction::UserSteppingAction(const G4Step* step) {
 
   if (particleName == "gamma") {
     if (inPlate) {
-      eventAction_->CountGamma(track->GetTrackID());
+      eventAction_->CountGamma(track->GetTrackID(), track->GetKineticEnergy() / MeV);
     }
     if (inPlate && preInside && !postInside) {
       int surfaceId = 0;

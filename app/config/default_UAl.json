@@ -79,7 +79,8 @@
     "outputRootFile": "run_UAl.root",
     "outputDir": "results",
     "enableVis": false,
-    "irradiation_time_s": 1.0
+    "irradiation_time_s": 1.0,
+    "enableSwellingOutput": true
   },
   "physics": {
     "physicsListName": "QGSP_BIC_HPT",

@@ -199,7 +199,10 @@ void EventAction::AddPlateGasHe(int plateIndex, double count) {
   plateGasHe_[static_cast<size_t>(plateIndex)] += count;
 }
 
-void EventAction::CountGamma(int trackId) {
+void EventAction::CountGamma(int trackId, double kineticEnergyMeV) {
+  if (kineticEnergyMeV <= 5.0) {
+    return;
+  }
   if (gammaTrackIds_.insert(trackId).second) {
     ++nGamma_;
   }

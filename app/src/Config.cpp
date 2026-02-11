@@ -151,6 +151,7 @@ AppConfig LoadConfig(const std::string& path) {
   get_if_exists(jr, "enableVis", cfg.run.enableVis);
   get_if_exists(jr, "enableEventTree", cfg.run.enableEventTree);
   get_if_exists(jr, "irradiation_time_s", cfg.run.irradiation_time_s);
+  get_if_exists(jr, "enableSwellingOutput", cfg.run.enableSwellingOutput);
   if (cfg.run.nThreads < 0) {
     cfg.run.nThreads = 0;
   }

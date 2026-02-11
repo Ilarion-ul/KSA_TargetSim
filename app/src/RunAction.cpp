@@ -163,7 +163,7 @@ struct MeshVoxelRow {
 std::vector<double> BuildNeutronEnergyGroupEdgesMeV() {
   std::vector<double> edges;
   edges.reserve(kNeutronFluxGroups + 1);
-  const double eMin = 1e-9;
+  const double eMin = 2.5e-9; // 0.0025 eV
   const double eMax = 5.0;
   const double logMin = std::log10(eMin);
   const double logMax = std::log10(eMax);
@@ -511,13 +511,17 @@ void RunAction::EndOfRunAction(const G4Run* run) {
   const double electronsPerSecond = beamCurrentA / kElementaryChargeC;
   const double electronsTotal = electronsPerSecond * irradiationTimeS;
   const auto neutronGroupEdgesMeV = BuildNeutronEnergyGroupEdgesMeV();
-  auto meshRows = BuildMeshRows(config_, edepBounds_, edepBinsX_, edepBinsY_, edepBinsZ_, nEventsForNorm, edep3dMeV);
+  std::vector<MeshVoxelRow> meshRows;
+  if (config_.run.enableSwellingOutput) {
+    meshRows = BuildMeshRows(config_, edepBounds_, edepBinsX_, edepBinsY_, edepBinsZ_, nEventsForNorm, edep3dMeV);
+  }
 
 #ifdef KSA_USE_ROOT
   if (rootFile_ && runTree_) {
     double edep_substrate_MeV = edepSub / MeV;
     double edep_coating_MeV = edepCoat / MeV;
     long long nGamma = nGammaTotal;
+    long long nGammaAbove5MeV = nGammaTotal;
     long long nNeutron = nNeutronTotal;
     int nEvents = nEventsForNorm;
     std::string physicsListName = config_.physics.physicsListName;
@@ -539,6 +543,7 @@ void RunAction::EndOfRunAction(const G4Run* run) {
     runTree_->Branch("edep_substrate", &edep_substrate_MeV);
     runTree_->Branch("edep_coating", &edep_coating_MeV);
     runTree_->Branch("nGamma", &nGamma);
+    runTree_->Branch("nGammaAbove5MeV", &nGammaAbove5MeV);
     runTree_->Branch("nNeutron", &nNeutron);
     runTree_->Branch("nNeutronExit", &nNeutronExit);
     runTree_->Branch("nEvents", &nEvents);
@@ -717,7 +722,7 @@ void RunAction::EndOfRunAction(const G4Run* run) {
       h2_edep_xy_mid->Write();
     }
 
-    if (!meshRows.empty()) {
+    if (config_.run.enableSwellingOutput && !meshRows.empty()) {
       auto* meshTree = new TTree("MeshData", "Voxelized mesh data for swelling postprocessing");
       int mesh_id = 0;
       long long voxel_id = 0;
@@ -981,6 +986,7 @@ void RunAction::EndOfRunAction(const G4Run* run) {
   os << "  \"edep_substrate\": " << (edepSub / MeV) << ",\n";
   os << "  \"edep_coating\": " << (edepCoat / MeV) << ",\n";
   os << "  \"nGamma\": " << nGammaTotal << ",\n";
+  os << "  \"nGammaAbove5MeV\": " << nGammaTotal << ",\n";
   os << "  \"nNeutron\": " << nNeutronTotal << ",\n";
   os << "  \"nNeutronExit\": " << nNeutronExitTotal << ",\n";
   os << "  \"nEvents\": " << (run ? run->GetNumberOfEvent() : config_.run.nEvents) << ",\n";
@@ -1016,65 +1022,69 @@ void RunAction::EndOfRunAction(const G4Run* run) {
   os << "}\n";
 
 
-  const auto runMetaOut = base / "logs" / "run_meta.json";
-  std::ofstream runMetaOs(runMetaOut);
-  runMetaOs << "{\n";
-  runMetaOs << "  \"nEvents\": " << nEventsForNorm << ",\n";
-  runMetaOs << "  \"normalization_mode\": \"per_primary\",\n";
-  runMetaOs << "  \"beam_current_A\": " << beamCurrentA << ",\n";
-  runMetaOs << "  \"irradiation_time_s\": " << irradiationTimeS << ",\n";
-  runMetaOs << "  \"electrons_per_second\": " << electronsPerSecond << ",\n";
-  runMetaOs << "  \"electrons_total\": " << electronsTotal << ",\n";
-  runMetaOs << "  \"beam_energy_MeV\": " << config_.beam.energy_MeV << ",\n";
-  runMetaOs << "  \"target_type\": \"" << config_.target.type << "\",\n";
-  runMetaOs << "  \"damage_source_status\": \"derived_from=damage_proxy\",\n";
-  runMetaOs << "  \"units\": {\n";
-  runMetaOs << "    \"edep_MeV_per_primary\": \"MeV\",\n";
-  runMetaOs << "    \"edep_J_per_primary\": \"J\",\n";
-  runMetaOs << "    \"damage_energy_eV_per_primary\": \"eV\",\n";
-  runMetaOs << "    \"flux_n_groups\": \"1/cm2 per-primary\"\n";
-  runMetaOs << "  },\n";
-  runMetaOs << "  \"neutron_energy_group_edges_MeV\": [";
-  for (size_t i = 0; i < neutronGroupEdgesMeV.size(); ++i) {
-    runMetaOs << neutronGroupEdgesMeV[i];
-    if (i + 1 < neutronGroupEdgesMeV.size()) runMetaOs << ", ";
-  }
-  runMetaOs << "]\n";
-  runMetaOs << "}\n";
-
-  const auto zBoundsForMesh = DeterminePlateStackZBounds(config_);
-  const auto meshDefOut = base / "logs" / "mesh_definition.json";
-  std::ofstream meshDefOs(meshDefOut);
-  meshDefOs << "{\n";
-  meshDefOs << "  \"mesh_id\": 1,\n";
-  meshDefOs << "  \"mesh_name\": \"target_plate_stack\",\n";
-  meshDefOs << "  \"bins\": {\"x\": " << edepBinsX_ << ", \"y\": " << edepBinsY_ << ", \"z\": " << edepBinsZ_ << "},\n";
-  meshDefOs << "  \"bounds_mm\": {\"x_min\": " << edepBounds_.xMinMm << ", \"x_max\": " << edepBounds_.xMaxMm
-            << ", \"y_min\": " << edepBounds_.yMinMm << ", \"y_max\": " << edepBounds_.yMaxMm << ", \"z_min\": "
-            << zBoundsForMesh.first << ", \"z_max\": " << zBoundsForMesh.second << "},\n";
-  meshDefOs << "  \"voxel_count\": " << meshRows.size() << ",\n";
-  meshDefOs << "  \"notes\": \"damage_energy is proxy from edep until dedicated displacement scoring is enabled\"\n";
-  meshDefOs << "}\n";
-
-  const auto meshDataOut = base / "logs" / "mesh_data.csv";
-  std::ofstream meshCsv(meshDataOut);
-  meshCsv << "mesh_id,voxel_id,ix,iy,iz,x_mm,y_mm,z_mm,volume_cm3,material_id,material_name,volume_id,volume_name,layer_id,layer_name,"
-          << "edep_MeV_per_primary,edep_J_per_primary,damage_energy_eV_per_primary,n_events_scored,flux_n_total_per_cm2_per_primary";
-  for (int g = 0; g < kNeutronFluxGroups; ++g) {
-    meshCsv << ",flux_n_g" << g;
-  }
-  meshCsv << ",h_prod_per_primary,he_prod_per_primary\n";
-  for (const auto& row : meshRows) {
-    meshCsv << row.mesh_id << "," << row.voxel_id << "," << row.ix << "," << row.iy << "," << row.iz << ","
-            << row.x_mm << "," << row.y_mm << "," << row.z_mm << "," << row.volume_cm3 << "," << row.label.material_id
-            << "," << row.label.material_name << "," << row.label.volume_id << "," << row.label.volume_name << ","
-            << row.label.layer_id << "," << row.label.layer_name << "," << row.edep_MeV_per_primary << ","
-            << row.edep_J_per_primary << "," << row.damage_energy_eV_per_primary << "," << row.n_events_scored << ","
-            << row.flux_n_total_per_cm2_per_primary;
-    for (double v : row.flux_n_groups_per_cm2_per_primary) {
-      meshCsv << "," << v;
+  if (config_.run.enableSwellingOutput) {
+    const auto runMetaOut = base / "logs" / "run_meta.json";
+    std::ofstream runMetaOs(runMetaOut);
+    runMetaOs << "{\n";
+    runMetaOs << "  \"nEvents\": " << nEventsForNorm << ",\n";
+    runMetaOs << "  \"normalization_mode\": \"per_primary\",\n";
+    runMetaOs << "  \"beam_current_A\": " << beamCurrentA << ",\n";
+    runMetaOs << "  \"irradiation_time_s\": " << irradiationTimeS << ",\n";
+    runMetaOs << "  \"electrons_per_second\": " << electronsPerSecond << ",\n";
+    runMetaOs << "  \"electrons_total\": " << electronsTotal << ",\n";
+    runMetaOs << "  \"beam_energy_MeV\": " << config_.beam.energy_MeV << ",\n";
+    runMetaOs << "  \"target_type\": \"" << config_.target.type << "\",\n";
+    runMetaOs << "  \"damage_source_status\": \"derived_from=damage_proxy\",\n";
+    runMetaOs << "  \"units\": {\n";
+    runMetaOs << "    \"edep_MeV_per_primary\": \"MeV\",\n";
+    runMetaOs << "    \"edep_J_per_primary\": \"J\",\n";
+    runMetaOs << "    \"damage_energy_eV_per_primary\": \"eV\",\n";
+    runMetaOs << "    \"flux_n_groups\": \"1/cm2 per-primary\"\n";
+    runMetaOs << "  },\n";
+    runMetaOs << "  \"neutron_energy_group_edges_MeV\": [";
+    for (size_t i = 0; i < neutronGroupEdgesMeV.size(); ++i) {
+      runMetaOs << neutronGroupEdgesMeV[i];
+      if (i + 1 < neutronGroupEdgesMeV.size()) runMetaOs << ", ";
     }
-    meshCsv << "," << row.h_prod_per_primary << "," << row.he_prod_per_primary << "\n";
+    runMetaOs << "]\n";
+    runMetaOs << "}\n";
+
+    const auto zBoundsForMesh = DeterminePlateStackZBounds(config_);
+    const auto meshDefOut = base / "logs" / "mesh_definition.json";
+    std::ofstream meshDefOs(meshDefOut);
+    meshDefOs << "{\n";
+    meshDefOs << "  \"mesh_id\": 1,\n";
+    meshDefOs << "  \"mesh_name\": \"target_plate_stack\",\n";
+    meshDefOs << "  \"bins\": {\"x\": " << edepBinsX_ << ", \"y\": " << edepBinsY_ << ", \"z\": " << edepBinsZ_ << "},\n";
+    meshDefOs << "  \"bounds_mm\": {\"x_min\": " << edepBounds_.xMinMm << ", \"x_max\": " << edepBounds_.xMaxMm
+              << ", \"y_min\": " << edepBounds_.yMinMm << ", \"y_max\": " << edepBounds_.yMaxMm << ", \"z_min\": "
+              << zBoundsForMesh.first << ", \"z_max\": " << zBoundsForMesh.second << "},\n";
+    meshDefOs << "  \"voxel_count\": " << meshRows.size() << ",\n";
+    meshDefOs << "  \"notes\": \"damage_energy is proxy from edep until dedicated displacement scoring is enabled\"\n";
+    meshDefOs << "}\n";
+
+    const auto meshDataOut = base / "logs" / "mesh_data.csv";
+    std::ofstream meshCsv(meshDataOut);
+    meshCsv << "mesh_id,voxel_id,ix,iy,iz,x_mm,y_mm,z_mm,volume_cm3,material_id,material_name,volume_id,volume_name,layer_id,layer_name,"
+            << "edep_MeV_per_primary,edep_J_per_primary,damage_energy_eV_per_primary,n_events_scored,flux_n_total_per_cm2_per_primary";
+    for (int g = 0; g < kNeutronFluxGroups; ++g) {
+      meshCsv << ",flux_n_g" << g;
+    }
+    meshCsv << ",h_prod_per_primary,he_prod_per_primary\n";
+    for (const auto& row : meshRows) {
+      meshCsv << row.mesh_id << "," << row.voxel_id << "," << row.ix << "," << row.iy << "," << row.iz << ","
+              << row.x_mm << "," << row.y_mm << "," << row.z_mm << "," << row.volume_cm3 << "," << row.label.material_id
+              << "," << row.label.material_name << "," << row.label.volume_id << "," << row.label.volume_name << ","
+              << row.label.layer_id << "," << row.label.layer_name << "," << row.edep_MeV_per_primary << ","
+              << row.edep_J_per_primary << "," << row.damage_energy_eV_per_primary << "," << row.n_events_scored << ","
+              << row.flux_n_total_per_cm2_per_primary;
+      for (double v : row.flux_n_groups_per_cm2_per_primary) {
+        meshCsv << "," << v;
+      }
+      meshCsv << "," << row.h_prod_per_primary << "," << row.he_prod_per_primary << "\n";
+    }
+
+
   }
 
   const auto heatmapOut = base / "logs" / "heatmaps.json";

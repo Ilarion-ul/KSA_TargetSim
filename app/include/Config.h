@@ -91,6 +91,7 @@ struct RunConfig {
   bool enableVis{false};
   bool enableEventTree{false}; // TODO: optional per-event ROOT tree switch.
   double irradiation_time_s{1.0};
+  bool enableSwellingOutput{true};
 };
 
 struct PhysicsConfig {

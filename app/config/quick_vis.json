@@ -90,7 +90,8 @@
     "outputRootFile": "quick_vis.root",
     "outputDir": "results",
     "enableVis": true,
-    "irradiation_time_s": 1.0
+    "irradiation_time_s": 1.0,
+    "enableSwellingOutput": true
   },
   "physics": {
     "physicsListName": "QGSP_BIC_HPT",
