@@ -307,6 +307,7 @@ void WriteParticleYieldsPerElectron(TFile* file, const std::string& outPath) {
   Long64_t photonEntries = 0;
   long long nNeutronSummary = -1;
   long long nGammaAbove5MeVSummary = -1;
+  long long nNeutronModelExitSummary = -1;
 
   if (auto* ntree = dynamic_cast<TTree*>(file->Get("NeutronSurf"))) {
     PrepareTreeForSafeRead(ntree);
@@ -339,18 +340,23 @@ void WriteParticleYieldsPerElectron(TFile* file, const std::string& outPath) {
 
   if (auto* sumTree = dynamic_cast<TTree*>(file->Get("run_summary"))) {
     PrepareTreeForSafeRead(sumTree);
-    EnableBranches(sumTree, {"nNeutron", "nGammaAbove5MeV"});
+    EnableBranches(sumTree, {"nNeutron", "nGammaAbove5MeV", "nNeutronModelExit"});
     long long nNeutron = 0;
     long long nGammaAbove5MeV = 0;
+    long long nNeutronModelExit = 0;
     if (sumTree->GetBranch("nNeutron")) {
       sumTree->SetBranchAddress("nNeutron", &nNeutron);
     }
     if (sumTree->GetBranch("nGammaAbove5MeV")) {
       sumTree->SetBranchAddress("nGammaAbove5MeV", &nGammaAbove5MeV);
     }
+    if (sumTree->GetBranch("nNeutronModelExit")) {
+      sumTree->SetBranchAddress("nNeutronModelExit", &nNeutronModelExit);
+    }
     if (SafeGetEntry(sumTree, 0, "run_summary(yield)")) {
       nNeutronSummary = nNeutron;
       nGammaAbove5MeVSummary = nGammaAbove5MeV;
+      nNeutronModelExitSummary = nNeutronModelExit;
     }
   }
 
@@ -367,6 +373,9 @@ void WriteParticleYieldsPerElectron(TFile* file, const std::string& outPath) {
   }
   if (nGammaAbove5MeVSummary >= 0) {
     os << "  \"photons_above5MeV_per_electron_from_run_summary\": " << (static_cast<double>(nGammaAbove5MeVSummary) / nElectrons) << ",\n";
+  }
+  if (nNeutronModelExitSummary >= 0) {
+    os << "  \"neutrons_model_exit_per_electron_from_run_summary\": " << (static_cast<double>(nNeutronModelExitSummary) / nElectrons) << ",\n";
   }
   os << "  \"neutrons_weighted_per_electron\": " << (neutronWeighted / nElectrons) << ",\n";
   os << "  \"photons_weighted_per_electron\": " << (photonWeighted / nElectrons) << "\n";

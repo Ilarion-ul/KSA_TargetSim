@@ -69,9 +69,11 @@ void EventAction::BeginOfEventAction(const G4Event* event) {
   nGamma_ = 0;
   nNeutron_ = 0;
   nNeutronExit_ = 0;
+  nNeutronModelExit_ = 0;
   gammaTrackIds_.clear();
   neutronTrackIds_.clear();
   neutronExitTrackIds_.clear();
+  neutronModelExitTrackIds_.clear();
   std::fill(plateEdep_.begin(), plateEdep_.end(), 0.0);
   std::fill(plateNeutronTrackLen_.begin(), plateNeutronTrackLen_.end(), 0.0);
   std::fill(plateNeutronHeatmap_.begin(), plateNeutronHeatmap_.end(), 0.0);
@@ -85,7 +87,7 @@ void EventAction::BeginOfEventAction(const G4Event* event) {
 
 void EventAction::EndOfEventAction(const G4Event*) {
   if (runAction_) {
-    runAction_->AccumulateEvent(edepSubstrate_, edepCoating_, nGamma_, nNeutron_, nNeutronExit_, eventId_, plateEdep_,
+    runAction_->AccumulateEvent(edepSubstrate_, edepCoating_, nGamma_, nNeutron_, nNeutronExit_, nNeutronModelExit_, eventId_, plateEdep_,
                                 plateNeutronTrackLen_, plateNeutronHeatmap_, edep3d_, neutronSurfaceHits_,
                                 photonSurfaceHits_, plateNiel_, plateGasH_, plateGasHe_);
   }
@@ -217,5 +219,11 @@ void EventAction::CountNeutron(int trackId) {
 void EventAction::CountNeutronExit(int trackId) {
   if (neutronExitTrackIds_.insert(trackId).second) {
     ++nNeutronExit_;
+  }
+}
+
+void EventAction::CountNeutronModelExit(int trackId) {
+  if (neutronModelExitTrackIds_.insert(trackId).second) {
+    ++nNeutronModelExit_;
   }
 }

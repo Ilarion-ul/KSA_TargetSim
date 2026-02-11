@@ -50,6 +50,7 @@ class EventAction : public G4UserEventAction {
   void CountGamma(int trackId, double kineticEnergyMeV);
   void CountNeutron(int trackId);
   void CountNeutronExit(int trackId);
+  void CountNeutronModelExit(int trackId);
 
  private:
   int plateHeatmapBinsX_{0};
@@ -82,6 +83,7 @@ class EventAction : public G4UserEventAction {
   int nGamma_{0};
   int nNeutron_{0};
   int nNeutronExit_{0};
+  int nNeutronModelExit_{0};
   std::vector<double> plateEdep_;
   std::vector<double> plateNeutronTrackLen_;
   std::vector<double> plateNeutronHeatmap_;
@@ -95,4 +97,5 @@ class EventAction : public G4UserEventAction {
   std::unordered_set<int> gammaTrackIds_;
   std::unordered_set<int> neutronTrackIds_;
   std::unordered_set<int> neutronExitTrackIds_;
+  std::unordered_set<int> neutronModelExitTrackIds_;
 };

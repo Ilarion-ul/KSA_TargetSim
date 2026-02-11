@@ -6,6 +6,7 @@
 #include <G4Exception.hh>
 #include <G4LogicalVolume.hh>
 #include <G4Material.hh>
+#include <G4MaterialPropertiesTable.hh>
 #include <G4NistManager.hh>
 #include <G4PVPlacement.hh>
 #include <G4String.hh>
@@ -32,6 +33,34 @@ G4String IndexedName(const char* base, int idx1) {
   return os.str();
 }
 
+
+
+G4Material* BuildSav1Material(G4NistManager* nist) {
+  if (auto* existing = G4Material::GetMaterial("SAV1", false)) {
+    return existing;
+  }
+  auto* sav1 = new G4Material("SAV1", 2.719 * g / cm3, 1);
+  sav1->AddElement(nist->FindOrBuildElement("Al"), 1.0);
+  auto* mpt = new G4MaterialPropertiesTable();
+  mpt->AddConstProperty("SPECIFICHEAT", 871.0 * joule / (kg * kelvin), true);
+  mpt->AddConstProperty("THERMALCONDUCTIVITY", 202.4 * watt / (m * kelvin), true);
+  sav1->SetMaterialPropertiesTable(mpt);
+  return sav1;
+}
+
+G4Material* BuildDemineralizedWater25C(G4NistManager* nist) {
+  if (auto* existing = G4Material::GetMaterial("KSA_DEMIN_WATER_25C", false)) {
+    return existing;
+  }
+  auto* water = new G4Material("KSA_DEMIN_WATER_25C", 0.9970 * g / cm3, 2, kStateLiquid, 298.15 * kelvin, 2.69 * bar);
+  water->AddElement(nist->FindOrBuildElement("H"), 2);
+  water->AddElement(nist->FindOrBuildElement("O"), 1);
+  auto* mpt = new G4MaterialPropertiesTable();
+  mpt->AddConstProperty("SPECIFICHEAT", 4184.0 * joule / (kg * kelvin), true);
+  water->SetMaterialPropertiesTable(mpt);
+  return water;
+}
+
 std::vector<double> BuildUMoInterPlateGapsMm(const AppConfig& config) {
   const auto& t = config.target;
   const size_t n = t.plate_thicknesses_mm.size();
@@ -56,7 +85,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
   auto* nist = G4NistManager::Instance();
 
   auto* worldMat = nist->FindOrBuildMaterial("G4_Galactic");
-  auto* waterMat = nist->FindOrBuildMaterial("G4_WATER"); // TODO: replace with demineralized-water properties.
+  auto* waterMat = BuildDemineralizedWater25C(nist);
 
   // ---------------------------------------------------------------------------
   // U-Mo branch: realistic target with construction materials and beamline.
@@ -77,12 +106,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
       u7mo->AddElement(elMo, 0.07);
     }
 
-    auto* sav1 = G4Material::GetMaterial("SAV1", false);
-    if (!sav1) {
-      // TODO: replace by real SAV-1 composition when available.
-      sav1 = new G4Material("SAV1", g4Al->GetDensity(), 1);
-      sav1->AddElement(nist->FindOrBuildElement("Al"), 1.0);
-    }
+    auto* sav1 = BuildSav1Material(nist);
 
     const double totalAssemblyLen = config_.geometry.total_assembly_len_mm * mm;
     const double beamlineVacLen = config_.geometry.beamline_vacuum_len_mm * mm;

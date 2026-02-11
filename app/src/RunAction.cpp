@@ -416,6 +416,7 @@ double gTotalEdepCoating = 0.0;
 long long gTotalGamma = 0;
 long long gTotalNeutron = 0;
 long long gTotalNeutronExit = 0;
+long long gTotalNeutronModelExit = 0;
 std::vector<double> gTotalPlateEdep;
 std::vector<double> gTotalPlateNeutronTrackLen;
 std::vector<double> gTotalPlateNeutronHeatmap;
@@ -436,6 +437,7 @@ void RunAction::BeginOfRunAction(const G4Run*) {
     gTotalGamma = 0;
     gTotalNeutron = 0;
     gTotalNeutronExit = 0;
+    gTotalNeutronModelExit = 0;
     gTotalPlateEdep.assign(plateCount_, 0.0);
     gTotalPlateNeutronTrackLen.assign(plateCount_, 0.0);
     gTotalPlateNeutronHeatmap.assign(static_cast<size_t>(plateHeatmapBinsX_) * static_cast<size_t>(plateHeatmapBinsY_) *
@@ -479,6 +481,7 @@ void RunAction::EndOfRunAction(const G4Run* run) {
   long long nGammaTotal = 0;
   long long nNeutronTotal = 0;
   long long nNeutronExitTotal = 0;
+  long long nNeutronModelExitTotal = 0;
   std::vector<double> plateEdep;
   std::vector<double> plateNeutronTrackLen;
   std::vector<double> plateNeutronHeatmap;
@@ -495,6 +498,7 @@ void RunAction::EndOfRunAction(const G4Run* run) {
     nGammaTotal = gTotalGamma;
     nNeutronTotal = gTotalNeutron;
     nNeutronExitTotal = gTotalNeutronExit;
+    nNeutronModelExitTotal = gTotalNeutronModelExit;
     plateEdep = gTotalPlateEdep;
     plateNeutronTrackLen = gTotalPlateNeutronTrackLen;
     plateNeutronHeatmap = gTotalPlateNeutronHeatmap;
@@ -554,6 +558,7 @@ void RunAction::EndOfRunAction(const G4Run* run) {
     int nEvents = nEventsForNorm;
     std::string physicsListName = config_.physics.physicsListName;
     int nNeutronExit = static_cast<int>(nNeutronExitTotal);
+    int nNeutronModelExit = static_cast<int>(nNeutronModelExitTotal);
     std::vector<double> plate_edep_MeV = plateEdepMeV;
     std::vector<double> plate_neutron_track_len_mm = plateNeutronTrackLenMM;
     double beam_E0_MeV = config_.beam.energy_MeV;
@@ -574,6 +579,7 @@ void RunAction::EndOfRunAction(const G4Run* run) {
     runTree_->Branch("nGammaAbove5MeV", &nGammaAbove5MeV);
     runTree_->Branch("nNeutron", &nNeutron);
     runTree_->Branch("nNeutronExit", &nNeutronExit);
+    runTree_->Branch("nNeutronModelExit", &nNeutronModelExit);
     runTree_->Branch("nEvents", &nEvents);
     runTree_->Branch("physicsListName", &physicsListName);
     runTree_->Branch("plate_edep_MeV", &plate_edep_MeV);
@@ -1026,6 +1032,7 @@ void RunAction::EndOfRunAction(const G4Run* run) {
   os << "  \"nGammaAbove5MeV\": " << nGammaTotal << ",\n";
   os << "  \"nNeutron\": " << nNeutronTotal << ",\n";
   os << "  \"nNeutronExit\": " << nNeutronExitTotal << ",\n";
+  os << "  \"nNeutronModelExit\": " << nNeutronModelExitTotal << ",\n";
   os << "  \"nEvents\": " << (run ? run->GetNumberOfEvent() : config_.run.nEvents) << ",\n";
   os << "  \"physicsListName\": \"" << config_.physics.physicsListName << "\",\n";
   os << "  \"heatmap_file\": \"logs/heatmaps.json\",\n";
@@ -1189,6 +1196,7 @@ void RunAction::AccumulateEvent(double edepSubstrate,
                                 int nGamma,
                                 int nNeutron,
                                 int nNeutronExit,
+                                int nNeutronModelExit,
                                 int eventId,
                                 const std::vector<double>& plateEdep,
                                 const std::vector<double>& plateNeutronTrackLen,
@@ -1206,6 +1214,7 @@ void RunAction::AccumulateEvent(double edepSubstrate,
   gTotalGamma += nGamma;
   gTotalNeutron += nNeutron;
   gTotalNeutronExit += nNeutronExit;
+  gTotalNeutronModelExit += nNeutronModelExit;
   if (gTotalPlateEdep.size() < plateEdep.size()) {
     gTotalPlateEdep.resize(plateEdep.size(), 0.0);
   }

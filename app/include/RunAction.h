@@ -56,6 +56,7 @@ class RunAction : public G4UserRunAction {
                        int nGamma,
                        int nNeutron,
                        int nNeutronExit,
+                       int nNeutronModelExit,
                        int eventId,
                        const std::vector<double>& plateEdep,
                        const std::vector<double>& plateNeutronTrackLen,

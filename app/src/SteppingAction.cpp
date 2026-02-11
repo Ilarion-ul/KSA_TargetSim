@@ -5,6 +5,7 @@
 #include <G4ParticleDefinition.hh>
 #include <G4ParticleTable.hh>
 #include <G4Step.hh>
+#include <G4StepStatus.hh>
 #include <G4SystemOfUnits.hh>
 #include <G4Track.hh>
 
@@ -111,6 +112,9 @@ void SteppingAction::UserSteppingAction(const G4Step* step) {
     }
   } else if (particleName == "neutron") {
     const double stepLen = step->GetStepLength();
+    if (step->GetPostStepPoint() && step->GetPostStepPoint()->GetStepStatus() == fWorldBoundary) {
+      eventAction_->CountNeutronModelExit(track->GetTrackID());
+    }
     if (inPlate) {
       eventAction_->CountNeutron(track->GetTrackID());
       eventAction_->AddPlateNeutronTrackLen(plateIndex, stepLen);
