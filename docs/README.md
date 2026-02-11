@@ -166,6 +166,10 @@ build/bin/ksasim --help
 # Batch
 build/bin/ksasim -m app/macros/run_batch.mac -c app/config/default_WTa.json
 
+# Production-oriented presets
+build/bin/ksasim -m app/macros/run_batch.mac -c app/config/production_WTa.json
+build/bin/ksasim -m app/macros/run_batch.mac -c app/config/production_UMo.json
+
 # Визуализация
 build/bin/ksasim --vis -c app/config/quick_vis.json
 ```
@@ -182,6 +186,8 @@ build/bin/ksasim --vis -c app/config/quick_vis.json
 - `app/config/default_WTa.json`
 - `app/config/default_UAl.json`
 - `app/config/default_UMo.json`
+- `app/config/production_WTa.json`
+- `app/config/production_UMo.json`
 - `app/config/quick_vis.json`
 
 ## Валидация и регрессия

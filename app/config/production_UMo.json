@@ -1,0 +1,135 @@
+{
+  "_comment": "Production-oriented U-Mo run preset (high statistics).",
+  "beam": {
+    "energy_MeV": 100.0,
+    "sigmaX_mm": 1.0,
+    "sigmaY_mm": 1.0,
+    "divergence_mrad": 1.0,
+    "position_mm": [
+      0.0,
+      0.0,
+      -1200.0
+    ],
+    "direction": [
+      0.0,
+      0.0,
+      1.0
+    ],
+    "defect_mode": "ideal",
+    "offset_mm": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "tilt_mrad": [
+      0.0,
+      0.0
+    ],
+    "halo_fraction": 0.0,
+    "halo_sigma_mm": 3.0,
+    "energy_sigma_rel_1sigma": 0.01,
+    "energy_uniform_rel_halfspan": 0.04,
+    "energy_spread_model": "gauss",
+    "pos_mm": [
+      0.0,
+      0.0,
+      -1200.0
+    ],
+    "dir": [
+      0.0,
+      0.0,
+      1.0
+    ],
+    "sigma_x_mm": 1.0,
+    "sigma_y_mm": 1.0,
+    "sigma_theta_x_mrad": 1.0,
+    "sigma_theta_y_mrad": 1.0,
+    "norm_emit_m_rad": 5e-07,
+    "use_emit_model": false,
+    "emit_sigma_theta_from": "eps_over_sigma",
+    "mode": "cw",
+    "pulse_width_us": 2.7,
+    "rep_rate_Hz": 625.0,
+    "I_pulse_A": 0.6,
+    "I_avg_A": 0.001,
+    "beam_power_kW": 100.0,
+    "defect": {
+      "offset_mm": [
+        0.0,
+        0.0
+      ],
+      "tilt_mrad": [
+        0.0,
+        0.0
+      ],
+      "halo_fraction": 0.0,
+      "halo_sigma_scale": 5.0
+    }
+  },
+  "target": {
+    "type": "U-Mo",
+    "plate_xy_mm": 64.0,
+    "plate_thicknesses_mm": [
+      4,
+      5,
+      6,
+      9,
+      12,
+      28
+    ],
+    "clad_thickness_front_mm": 1.0,
+    "clad_thickness_rest_mm": 0.7,
+    "gap_inout_mm": 1.0,
+    "gap_mid_mm": 1.75,
+    "housing_inner_xy_mm": 66.0,
+    "housing_wall_mm": 2.0,
+    "entrance_window_mm": 2.0,
+    "helium_chamber_len_mm": 237.0,
+    "u7mo_density_g_cm3": 17.0,
+    "fill_medium_in_target": "water",
+    "temperature_K": 300.0,
+    "gap_front_mm": 3.0,
+    "gap_rear_mm": 1.75,
+    "gap_split_index": 3,
+    "inter_plate_gaps_mm": [
+      3.0,
+      3.0,
+      3.0,
+      1.75,
+      1.75
+    ]
+  },
+  "run": {
+    "nEvents": 1000000,
+    "nThreads": 0,
+    "outputRootFile": "run_UMo_production.root",
+    "outputDir": "results/production_umo",
+    "enableVis": false,
+    "irradiation_time_s": 3600.0,
+    "enableSwellingOutput": true
+  },
+  "physics": {
+    "physicsListName": "QGSP_BIC_HPT",
+    "enablePhotonuclear": true,
+    "cut_mm": 0.1
+  },
+  "geometry": {
+    "simpleCylinder": false,
+    "worldMargin_mm": 200.0,
+    "total_assembly_len_mm": 2620.0,
+    "beamline_vacuum_len_mm": 2210.0,
+    "target_region_extra_clearance_mm": 5.0,
+    "enable_alignment_pin": false,
+    "alignment_pin_pos_mm": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "alignment_pin_size_mm": [
+      2.0,
+      2.0,
+      10.0
+    ],
+    "alignment_pin_material": "G4_Al"
+  }
+}

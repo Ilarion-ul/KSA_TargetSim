@@ -341,9 +341,9 @@ void WriteParticleYieldsPerElectron(TFile* file, const std::string& outPath) {
   if (auto* sumTree = dynamic_cast<TTree*>(file->Get("run_summary"))) {
     PrepareTreeForSafeRead(sumTree);
     EnableBranches(sumTree, {"nNeutron", "nGammaAbove5MeV", "nNeutronModelExit"});
-    long long nNeutron = 0;
-    long long nGammaAbove5MeV = 0;
-    long long nNeutronModelExit = 0;
+    int nNeutron = 0;
+    int nGammaAbove5MeV = 0;
+    int nNeutronModelExit = 0;
     if (sumTree->GetBranch("nNeutron")) {
       sumTree->SetBranchAddress("nNeutron", &nNeutron);
     }
@@ -354,9 +354,9 @@ void WriteParticleYieldsPerElectron(TFile* file, const std::string& outPath) {
       sumTree->SetBranchAddress("nNeutronModelExit", &nNeutronModelExit);
     }
     if (SafeGetEntry(sumTree, 0, "run_summary(yield)")) {
-      nNeutronSummary = nNeutron;
-      nGammaAbove5MeVSummary = nGammaAbove5MeV;
-      nNeutronModelExitSummary = nNeutronModelExit;
+      nNeutronSummary = static_cast<long long>(nNeutron);
+      nGammaAbove5MeVSummary = static_cast<long long>(nGammaAbove5MeV);
+      nNeutronModelExitSummary = static_cast<long long>(nNeutronModelExit);
     }
   }
 
