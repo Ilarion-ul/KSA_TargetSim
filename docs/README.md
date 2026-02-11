@@ -21,7 +21,7 @@ KSA_TargetSim — Geant4‑симулятор для моделирования 
 ### Имена объёмов (ключевые для скоринга)
 Используются в `SteppingAction` для агрегации:
 - W‑Ta: `TargetSubstrate`, `TargetCoating`, `TargetBufferTi`, `TargetWaterGap`, `TargetAssembly`.
-- U‑Mo: `PlateU_<i>`, `PlateCladAl_<i>`, `WaterGap_<i>`, `EntranceWindow`, `TargetHousing`, `HeliumChamber`.
+- U‑Mo: `PlateU_<i>`, `PlateCladAl_<i>`, `WaterGap_<i>`, `EntranceWindow`, `TargetHousing`, `HeliumChamber`, `AlignmentPin` (optional).
 
 ## Физическая модель (детальный блок)
 ### Физические процессы и список
@@ -53,6 +53,30 @@ KSA_TargetSim — Geant4‑симулятор для моделирования 
 - He‑группа: `alpha`, `He3`.
 
 Данные агрегируются per‑plate и используются как заготовка для оценки окрихчения.
+
+
+
+### Актуальні параметри геометрії (ТЗ)
+- **W-Ta**
+  - 7 пластин, `plate_xy_mm` = 65.8 (допускається 66.0)
+  - `plate_thicknesses_mm` = `[2.5, 2.5, 2.5, 3.5, 3.5, 5.5, 9.5]`
+  - `clad_ta_mm` у діапазоні `[0.25, 0.27]`
+  - `buffer_ti_mm` у діапазоні `[0.03, 0.06]`
+  - `water_gap_mm` пресетно `2.0` або `1.75`
+  - `w_substrate_material` = `pure_W` або `W_Fe_Ni` (1.5% Fe, 3% Ni, решта W)
+- **U-Mo**
+  - 6 пластин, `plate_xy_mm` = 64.0
+  - `plate_thicknesses_mm` = `[4, 5, 6, 9, 12, 28]`
+  - `clad_thickness_front_mm` = 1.0, `clad_thickness_rest_mm` = 0.7
+  - `gap_inout_mm` = 1.0
+  - міжпластинні зазори задаються явно `inter_plate_gaps_mm` (або fallback-правилом `gap_front_mm/gap_rear_mm/gap_split_index`)
+- **Загальна збірка**
+  - `housing_inner_xy_mm` = 66, `housing_wall_mm` = 2
+  - `total_assembly_len_mm` = 2620
+  - `beamline_vacuum_len_mm` = 2210
+  - `entrance_window_mm` = 2
+  - `helium_chamber_len_mm` = 237
+  - опціональний центруючий "палець": `geometry.enable_alignment_pin` + `alignment_pin_*`
 
 ## Выходные данные
 ### Текстовые

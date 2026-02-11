@@ -79,6 +79,14 @@ struct TargetConfig {
   double helium_chamber_len_mm{237.0};
   double u7mo_density_g_cm3{17.0}; // TODO: validate exact tech-specific density.
   std::string fill_medium_in_target{"water"};
+  std::string w_substrate_material{"pure_W"}; // pure_W | W_Fe_Ni
+
+  // Optional explicit U-Mo inter-plate gaps (size = plate_count - 1).
+  // If empty, a rule-based fallback is used (front/rear split or legacy gap_mid).
+  std::vector<double> inter_plate_gaps_mm{};
+  double gap_front_mm{3.0};
+  double gap_rear_mm{1.75};
+  int gap_split_index{3}; // number of first inter-plate gaps using gap_front_mm
 
   double temperature_K{300.0};
 };
@@ -108,6 +116,12 @@ struct GeometryConfig {
   double total_assembly_len_mm{2620.0};
   double beamline_vacuum_len_mm{2210.0};
   double target_region_extra_clearance_mm{0.0};
+
+  // Optional centering/alignment pin ("finger").
+  bool enable_alignment_pin{false};
+  std::array<double, 3> alignment_pin_pos_mm{0.0, 0.0, 0.0};
+  std::array<double, 3> alignment_pin_size_mm{2.0, 2.0, 10.0};
+  std::string alignment_pin_material{"G4_Al"};
 };
 
 struct DefectConfig {

@@ -89,6 +89,18 @@
   },
   "geometry": {
     "simpleCylinder": false,
-    "worldMargin_mm": 50.0
+    "worldMargin_mm": 50.0,
+    "enable_alignment_pin": false,
+    "alignment_pin_pos_mm": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "alignment_pin_size_mm": [
+      2.0,
+      2.0,
+      10.0
+    ],
+    "alignment_pin_material": "G4_Al"
   }
 }

@@ -82,7 +82,8 @@
     "clad_ta_mm": 0.25,
     "buffer_ti_mm": 0.04,
     "assembly_thickness_mm": 120.0,
-    "temperature_K": 300.0
+    "temperature_K": 300.0,
+    "w_substrate_material": "pure_W"
   },
   "run": {
     "nEvents": 10,
@@ -100,6 +101,18 @@
   },
   "geometry": {
     "simpleCylinder": true,
-    "worldMargin_mm": 120.0
+    "worldMargin_mm": 120.0,
+    "enable_alignment_pin": false,
+    "alignment_pin_pos_mm": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "alignment_pin_size_mm": [
+      2.0,
+      2.0,
+      10.0
+    ],
+    "alignment_pin_material": "G4_Al"
   }
 }

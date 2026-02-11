@@ -31,6 +31,25 @@ G4String IndexedName(const char* base, int idx1) {
   os << base << "_" << idx1;
   return os.str();
 }
+
+std::vector<double> BuildUMoInterPlateGapsMm(const AppConfig& config) {
+  const auto& t = config.target;
+  const size_t n = t.plate_thicknesses_mm.size();
+  if (n <= 1) return {};
+  if (!t.inter_plate_gaps_mm.empty()) {
+    return t.inter_plate_gaps_mm;
+  }
+  std::vector<double> gaps(n - 1, t.gap_rear_mm);
+  const size_t split = static_cast<size_t>(std::min<int>(t.gap_split_index, static_cast<int>(n - 1)));
+  for (size_t i = 0; i < split; ++i) {
+    gaps[i] = t.gap_front_mm;
+  }
+  // backward-compatible fallback for legacy 12-plate setups
+  if (n == 12 && t.gap_mid_mm > 0.0 && t.gap_front_mm == 3.0 && t.gap_rear_mm == 1.75) {
+    std::fill(gaps.begin(), gaps.end(), t.gap_mid_mm);
+  }
+  return gaps;
+}
 } // namespace
 
 G4VPhysicalVolume* DetectorConstruction::Construct() {
@@ -82,7 +101,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     const double cladFront = t.clad_thickness_front_mm * mm;
     const double cladRest = t.clad_thickness_rest_mm * mm;
     const double gapInOut = t.gap_inout_mm * mm;
-    const double gapMid = t.gap_mid_mm * mm;
+    const auto interPlateGapsMm = BuildUMoInterPlateGapsMm(config_);
     const double housingInnerHalfXY = 0.5 * t.housing_inner_xy_mm * mm;
     const double housingWall = t.housing_wall_mm * mm;
     const double housingOuterHalfXY = housingInnerHalfXY + housingWall;
@@ -95,24 +114,23 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
                   "Plate with cladding does not fit housing inner aperture");
     }
 
-    // Plate stack thickness (12 plates + 13 gaps).
-    double stackLen = 0.0;
+    // Plate stack thickness (inlet gap + plates + inter-plate gaps + outlet gap).
+    double stackLen = gapInOut;
     for (size_t i = 0; i < plateTs.size(); ++i) {
       const double coreT = plateTs[i] * mm;
       const double clad = (i < 4) ? cladFront : cladRest;
       stackLen += coreT + 2.0 * clad;
-      if (i == 0 || i == plateTs.size() - 1) {
-        stackLen += gapInOut;
-      } else {
-        stackLen += gapMid;
+      if (i + 1 < plateTs.size()) {
+        const double g = (i < interPlateGapsMm.size()) ? interPlateGapsMm[i] * mm : gapInOut;
+        stackLen += g;
       }
     }
-    // Last (13th) gap after plate 12.
     stackLen += gapInOut;
 
     const double requiredTargetLen = entranceWindowT + stackLen + heliumLen + 2.0 * clearance;
 
-    G4cout << "[geom U-Mo] BeamlineVacuumLength = " << beamlineVacLen / mm << " mm\n"
+    G4cout << "[geom U-Mo] Plate count = " << plateTs.size() << "\n"
+           << "[geom U-Mo] BeamlineVacuumLength = " << beamlineVacLen / mm << " mm\n"
            << "[geom U-Mo] TotalAssemblyLength = " << totalAssemblyLen / mm << " mm\n"
            << "[geom U-Mo] TargetRegionLength = " << targetRegionLen / mm << " mm\n"
            << "[geom U-Mo] Plate stack length (with cladding+gaps) = " << stackLen / mm << " mm\n"
@@ -159,6 +177,26 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     auto* targetInnerFluidLV = new G4LogicalVolume(targetInnerFluidS, fillMat, "TargetInnerFluidLV");
     new G4PVPlacement(nullptr, {0, 0, targetCenterZ}, targetInnerFluidLV, "TargetInnerFluid", targetAssemblyLV, false, 0, true);
 
+    if (config_.geometry.enable_alignment_pin) {
+      auto* pinMat = nist->FindOrBuildMaterial(config_.geometry.alignment_pin_material);
+      if (!pinMat) pinMat = sav1;
+      const auto& ps = config_.geometry.alignment_pin_size_mm;
+      const auto& pp = config_.geometry.alignment_pin_pos_mm;
+      const double hx = 0.5 * ps[0] * mm;
+      const double hy = 0.5 * ps[1] * mm;
+      const double hz = 0.5 * ps[2] * mm;
+      if (std::abs(pp[0] * mm) + hx > housingInnerHalfXY || std::abs(pp[1] * mm) + hy > housingInnerHalfXY ||
+          std::abs(pp[2] * mm) + hz > 0.5 * targetRegionLen) {
+        G4Exception("DetectorConstruction::Construct", "GeomPIN001", FatalException,
+                    "Alignment pin is outside U-Mo target inner volume");
+      }
+      auto* pinS = new G4Box("AlignmentPinShape", hx, hy, hz);
+      auto* pinLV = new G4LogicalVolume(pinS, pinMat, "AlignmentPinLV");
+      new G4PVPlacement(nullptr, {pp[0] * mm, pp[1] * mm, pp[2] * mm}, pinLV, "AlignmentPin", targetInnerFluidLV, false, 0,
+                        true);
+      ConfigureVis(pinLV, G4Colour(0.95, 0.1, 0.1));
+    }
+
     // Build internal sequence in TargetInnerFluid local coordinates.
     double zCursor = -0.5 * targetRegionLen + clearance;
 
@@ -174,9 +212,9 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
 
     int gapIdx = 1;
     for (size_t i = 0; i < plateTs.size(); ++i) {
-      // Upstream gap for each plate.
+      // Gap before each plate: inlet for first, otherwise inter-plate scheme.
       {
-        const double gapT = (gapIdx == 1) ? gapInOut : gapMid;
+        const double gapT = (i == 0) ? gapInOut : ((i - 1 < interPlateGapsMm.size()) ? interPlateGapsMm[i - 1] * mm : gapInOut);
         const double hz = 0.5 * gapT;
         auto* gapS = new G4Box("WaterGapShape", housingInnerHalfXY, housingInnerHalfXY, hz);
         auto* gapLV = new G4LogicalVolume(gapS, waterMat, "WaterGapLV");
@@ -246,6 +284,19 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
   // ---------------------------------------------------------------------------
   if (config_.target.type == "W-Ta" && config_.geometry.simpleCylinder) {
     auto* wMat = nist->FindOrBuildMaterial("G4_W");
+    if (config_.target.w_substrate_material == "W_Fe_Ni") {
+      auto* elW = nist->FindOrBuildElement("W");
+      auto* elFe = nist->FindOrBuildElement("Fe");
+      auto* elNi = nist->FindOrBuildElement("Ni");
+      auto* wFeNi = G4Material::GetMaterial("W_Fe_Ni", false);
+      if (!wFeNi) {
+        wFeNi = new G4Material("W_Fe_Ni", 18.5 * g / cm3, 3);
+        wFeNi->AddElement(elW, 0.955);
+        wFeNi->AddElement(elFe, 0.015);
+        wFeNi->AddElement(elNi, 0.030);
+      }
+      wMat = wFeNi;
+    }
     auto* taMat = nist->FindOrBuildMaterial("G4_Ta");
     auto* tiMat = nist->FindOrBuildMaterial("G4_Ti");
 
@@ -268,6 +319,25 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     auto* assemblyS = new G4Box("TargetAssembly", taHalfX, taHalfY, 0.5 * assemblyT);
     auto* assemblyLV = new G4LogicalVolume(assemblyS, waterMat, "TargetAssemblyLV");
     new G4PVPlacement(nullptr, {}, assemblyLV, "TargetAssembly", worldLV, false, 0, true);
+
+    if (config_.geometry.enable_alignment_pin) {
+      auto* pinMat = nist->FindOrBuildMaterial(config_.geometry.alignment_pin_material);
+      if (!pinMat) pinMat = taMat;
+      const auto& ps = config_.geometry.alignment_pin_size_mm;
+      const auto& pp = config_.geometry.alignment_pin_pos_mm;
+      const double hx = 0.5 * ps[0] * mm;
+      const double hy = 0.5 * ps[1] * mm;
+      const double hz = 0.5 * ps[2] * mm;
+      if (std::abs(pp[0] * mm) + hx > taHalfX || std::abs(pp[1] * mm) + hy > taHalfY ||
+          std::abs(pp[2] * mm) + hz > 0.5 * assemblyT) {
+        G4Exception("DetectorConstruction::Construct", "GeomPIN002", FatalException,
+                    "Alignment pin is outside W-Ta assembly volume");
+      }
+      auto* pinS = new G4Box("AlignmentPinShape", hx, hy, hz);
+      auto* pinLV = new G4LogicalVolume(pinS, pinMat, "AlignmentPinLV");
+      new G4PVPlacement(nullptr, {pp[0] * mm, pp[1] * mm, pp[2] * mm}, pinLV, "AlignmentPin", assemblyLV, false, 0, true);
+      ConfigureVis(pinLV, G4Colour(0.95, 0.1, 0.1));
+    }
 
     double stackT = 8.0 * waterGap;
     for (double tmm : wPlateTsMM) {

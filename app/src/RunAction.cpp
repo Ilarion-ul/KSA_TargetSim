@@ -76,6 +76,22 @@ RunAction::HeatmapBounds DetermineEdepBounds(const AppConfig& config) {
   return {plateBounds.xMinMm, plateBounds.xMaxMm, plateBounds.yMinMm, plateBounds.yMaxMm, zMin, zMax};
 }
 
+
+std::vector<double> BuildUMoInterPlateGapsMmForBounds(const AppConfig& config) {
+  const auto& t = config.target;
+  const size_t n = t.plate_thicknesses_mm.size();
+  if (n <= 1) return {};
+  if (!t.inter_plate_gaps_mm.empty() && t.inter_plate_gaps_mm.size() == n - 1) {
+    return t.inter_plate_gaps_mm;
+  }
+  std::vector<double> gaps(n - 1, t.gap_rear_mm);
+  const size_t split = static_cast<size_t>(std::min<int>(t.gap_split_index, static_cast<int>(n - 1)));
+  for (size_t i = 0; i < split; ++i) gaps[i] = t.gap_front_mm;
+  if (n == 12 && t.gap_mid_mm > 0.0 && t.gap_front_mm == 3.0 && t.gap_rear_mm == 1.75) {
+    std::fill(gaps.begin(), gaps.end(), t.gap_mid_mm);
+  }
+  return gaps;
+}
 std::pair<double, double> DeterminePlateStackZBounds(const AppConfig& config) {
   if (config.target.type == "U-Mo") {
     const double totalAssemblyLen = config.geometry.total_assembly_len_mm;
@@ -87,16 +103,14 @@ std::pair<double, double> DeterminePlateStackZBounds(const AppConfig& config) {
     const double cladFront = config.target.clad_thickness_front_mm;
     const double cladRest = config.target.clad_thickness_rest_mm;
     const double gapInOut = config.target.gap_inout_mm;
-    const double gapMid = config.target.gap_mid_mm;
-    double stackLen = 0.0;
+    const auto interGaps = BuildUMoInterPlateGapsMmForBounds(config);
+    double stackLen = gapInOut;
     for (size_t i = 0; i < plateTs.size(); ++i) {
       const double coreT = plateTs[i];
       const double clad = (i < 4) ? cladFront : cladRest;
       stackLen += coreT + 2.0 * clad;
-      if (i == 0 || i == plateTs.size() - 1) {
-        stackLen += gapInOut;
-      } else {
-        stackLen += gapMid;
+      if (i + 1 < plateTs.size()) {
+        stackLen += (i < interGaps.size()) ? interGaps[i] : gapInOut;
       }
     }
     stackLen += gapInOut;
