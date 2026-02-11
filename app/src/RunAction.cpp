@@ -1103,13 +1103,20 @@ void RunAction::EndOfRunAction(const G4Run* run) {
     const auto meshDefOut = base / "logs" / "mesh_definition.json";
     std::ofstream meshDefOs(meshDefOut);
     meshDefOs << "{\n";
-    meshDefOs << "  \"mesh_id\": 1,\n";
-    meshDefOs << "  \"mesh_name\": \"target_plate_stack\",\n";
-    meshDefOs << "  \"bins\": {\"x\": " << edepBinsX_ << ", \"y\": " << edepBinsY_ << ", \"z\": " << edepBinsZ_ << "},\n";
-    meshDefOs << "  \"bounds_mm\": {\"x_min\": " << edepBounds_.xMinMm << ", \"x_max\": " << edepBounds_.xMaxMm
+    meshDefOs << "  \"voxel_namespace\": {\"global_unique\": true, \"voxel_id_min\": 0, \"voxel_id_max\": "
+              << (meshRows.empty() ? -1 : static_cast<long long>(meshRows.size() - 1)) << "},\n";
+    meshDefOs << "  \"meshes\": [\n";
+    meshDefOs << "    {\n";
+    meshDefOs << "      \"mesh_id\": 1,\n";
+    meshDefOs << "      \"mesh_name\": \"target_plate_stack\",\n";
+    meshDefOs << "      \"bins\": {\"x\": " << edepBinsX_ << ", \"y\": " << edepBinsY_ << ", \"z\": " << edepBinsZ_
+              << "},\n";
+    meshDefOs << "      \"bounds_mm\": {\"x_min\": " << edepBounds_.xMinMm << ", \"x_max\": " << edepBounds_.xMaxMm
               << ", \"y_min\": " << edepBounds_.yMinMm << ", \"y_max\": " << edepBounds_.yMaxMm << ", \"z_min\": "
               << zBoundsForMesh.first << ", \"z_max\": " << zBoundsForMesh.second << "},\n";
-    meshDefOs << "  \"voxel_count\": " << meshRows.size() << ",\n";
+    meshDefOs << "      \"voxel_count\": " << meshRows.size() << "\n";
+    meshDefOs << "    }\n";
+    meshDefOs << "  ],\n";
     meshDefOs << "  \"notes\": \"damage_energy is proxy from edep until dedicated displacement scoring is enabled\"\n";
     meshDefOs << "}\n";
 

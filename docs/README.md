@@ -75,11 +75,12 @@ KSA_TargetSim — Geant4‑симулятор для моделирования 
   - `water_gap_mm` пресетно `2.0` або `1.75`
   - `w_substrate_material` = `pure_W` або `W_Fe_Ni` (1.5% Fe, 3% Ni, решта W)
 - **U-Mo**
-  - 6 пластин, `plate_xy_mm` = 64.0
-  - `plate_thicknesses_mm` = `[4, 5, 6, 9, 12, 28]`
-  - `clad_thickness_front_mm` = 1.0, `clad_thickness_rest_mm` = 0.7
+  - 12 пластин (фінальна нейтроногенеруюча конфігурація), `plate_xy_mm` = 64.0
+  - `plate_thicknesses_mm` = `[2.5,2.5,2.5,2.5,3,3,4,5,7,10,14,22.5]`
+  - `clad_thickness_front_mm` = 0.95 (для пластин 1–4), `clad_thickness_rest_mm` = 0.7 (для 5–12)
   - `gap_inout_mm` = 1.0
-  - міжпластинні зазори задаються явно `inter_plate_gaps_mm` (або fallback-правилом `gap_front_mm/gap_rear_mm/gap_split_index`)
+  - `inter_plate_gaps_mm` = 11 значень по `1.75` мм
+  - 6-пластинний варіант підтримується як legacy/backward-compatible
 - **Загальна збірка**
   - `housing_inner_xy_mm` = 66, `housing_wall_mm` = 2
   - `total_assembly_len_mm` = 2620
@@ -204,6 +205,10 @@ build/bin/ksasim --vis -c app/config/quick_vis.json
 - `results/logs/run_meta.json`
 - `results/logs/mesh_definition.json`
 - `results/logs/mesh_data.csv`
+
+### Что содержит `mesh_definition.json`
+- `voxel_namespace` з глобально унікальним `voxel_id` діапазоном
+- `meshes[]` (поточний run може містити 1..N mesh-областей; зараз заповнюється `target_plate_stack`)
 
 ### Что содержит `mesh_data.csv`
 Одна строка = один воксель:

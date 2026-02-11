@@ -158,7 +158,7 @@ AppConfig LoadConfig(const std::string& path) {
   if (cfg.target.type == "U-Mo") {
     const auto plateCount = cfg.target.plate_thicknesses_mm.size();
     if (plateCount != 6 && plateCount != 12) {
-      throw std::runtime_error("Config validation failed: target.plate_thicknesses_mm must contain 6 (new spec) or 12 (legacy) values for U-Mo");
+      throw std::runtime_error("Config validation failed: target.plate_thicknesses_mm must contain 12 (recommended) or 6 (legacy) values for U-Mo");
     }
     if (cfg.target.fill_medium_in_target != "water" && cfg.target.fill_medium_in_target != "vacuum") {
       throw std::runtime_error("Config validation failed: target.fill_medium_in_target must be 'water' or 'vacuum'");
